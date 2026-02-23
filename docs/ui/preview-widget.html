@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Capture Preview &amp; Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden flex items-center justify-center">
+<!-- Modal Backdrop Overlay -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+<!-- Main Modal Container -->
+<div class="bg-white dark:bg-[#161e27] w-full max-w-[1024px] rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+<!-- Header Section -->
+<div class="px-8 pt-8 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<div>
+<h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Preview &amp; Confirm</h1>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Verify the captured dental image and OCR data before saving to the patient record.</p>
+</div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-slate-400">close</span>
+</button>
+</div>
+<!-- Content Area (Scrollable if needed) -->
+<div class="flex-1 overflow-y-auto p-8 space-y-8">
+<!-- Cropped Image Preview Area -->
+<div class="relative group">
+<div class="aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center ring-1 ring-slate-200 dark:ring-slate-800">
+<div class="w-full h-full bg-center bg-no-repeat bg-cover flex items-center justify-center relative" data-alt="Close up radiographic dental x-ray image showing teeth structure" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD53GX6rZuLn_CO_j6TAO8cyvf2glXsCC43O9uWwpNmn6VkWt46dXSRGexrdMaSJ4R6tgMa0rZmcMPo19Bd4L1G62k08nwSursYKxfpkvBeTZ9ekLCsbtmV7aYV-kvjB5T2pra5FcO4yRa5FVVF3yna6FuLbjygI69hWqG7J9xmpn-uvHxGRT_JnBjv-4_D_EG3_rucS4w7zYtlX3m_E-1hcGSSK5AHtoeahTxwwrvEd1rILDXE80LzIwG61X40vmX-m-wOFjIGJQku");'>
+<!-- OCR Overlay Badge -->
+<div class="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg px-4 py-2 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-sm">visibility</span>
+<span class="text-white font-semibold text-lg tracking-wide">21 (4.0 x 13.0)</span>
+</div>
+<!-- Crop Guides/Overlays (Decorative) -->
+<div class="absolute inset-0 border-2 border-primary/40 pointer-events-none rounded-lg"></div>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between text-xs text-slate-500 uppercase tracking-widest font-semibold">
+<span>Automated Crop Area</span>
+<div class="flex gap-4">
+<span>Resolution: 1200 x 800</span>
+<span>Scale: 1:1</span>
+</div>
+</div>
+</div>
+<!-- Extracted Information Form -->
+<div>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<h2 class="text-lg font-bold text-slate-900 dark:text-white">Extracted Information</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Tooth Number</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-[#1c2631] border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 dark:text-white transition-all outline-none" type="text" value="21"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-500">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Diameter (mm)</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-[#1c2631] border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 dark:text-white transition-all outline-none" type="text" value="4.0"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+<span class="text-[10px] font-bold">OCR</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Length (mm)</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-[#1c2631] border border-slate-200 dark:border-slate-700 rounded-lg h-12 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 dark:text-white transition-all outline-none" type="text" value="13.0"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+<span class="text-[10px] font-bold">OCR</span>
+</div>
+</div>
+</div>
+</div>
+<p class="mt-4 text-xs text-slate-500 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                        Adjust measurements if the optical character recognition requires correction.
+                    </p>
+</div>
+</div>
+<!-- Footer Controls -->
+<div class="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-black/10 flex items-center justify-between">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative">
+<input class="peer hidden" type="checkbox"/>
+<div class="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] hidden peer-checked:block">check</span>
+</div>
+</div>
+<span class="text-sm font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">Skip Preview next time</span>
+</label>
+<div class="flex items-center gap-4">
+<button class="px-6 py-3 rounded-lg font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                        Cancel
+                    </button>
+<button class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined">save</span>
+                        Save &amp; Export
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>
