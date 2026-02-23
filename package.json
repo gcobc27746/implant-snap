@@ -1,0 +1,59 @@
+{
+  "name": "implant-snap",
+  "version": "1.0.0",
+  "description": "> Snap. Extract. Overlay. Done.",
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "dist:win": "npm run build && electron-builder --win nsis"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gcobc27746/implant-snap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gcobc27746/implant-snap/issues"
+  },
+  "homepage": "https://github.com/gcobc27746/implant-snap#readme",
+  "build": {
+    "appId": "com.implantsnap.app",
+    "productName": "ImplantSnap",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "electron-store": "^11.0.2",
+    "screenshot-desktop": "^1.15.3",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "electron": "^40.6.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "typescript": "^5.9.3"
+  }
+}
