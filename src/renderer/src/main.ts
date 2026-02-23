@@ -338,3 +338,9 @@ function mount(state: UiState): void {
 }
 
 void bootstrap()
+    if (state.selected === 'overlayAnchor') {
+      state.config.regions.overlayAnchor = clone(base.regions.overlayAnchor)
+    } else {
+      const selectedRectKey: 'cropMain' | 'ocrTooth' | 'ocrExtra' = state.selected
+      state.config.regions[selectedRectKey] = clone(base.regions[selectedRectKey])
+    }
