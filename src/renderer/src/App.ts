@@ -42,12 +42,44 @@ export function renderConfigWorkbench(config: AppConfig): string {
           <button id="saveBtn" class="btn-primary">儲存設定</button>
           <button id="resetRegionBtn" class="btn-secondary">重置目前區域</button>
           <button id="resetAllBtn" class="btn-secondary">重置全部設定</button>
-        </div>
-      </aside>
-    </main>
+              <div class="region-form-grid">
+                <section class="region-card">
+                  <h4>主裁切區 (cropMain)</h4>
+                  <div class="field-grid">
+                    <label>POS X<input id="cropMainX" type="number" min="1"/></label>
+                    <label>POS Y<input id="cropMainY" type="number" min="1"/></label>
+                    <label>WIDTH<input id="cropMainWidth" type="number" min="1"/></label>
+                    <label>HEIGHT<input id="cropMainHeight" type="number" min="1"/></label>
+                  </div>
+                </section>
+                <section class="region-card">
+                  <h4>牙號 OCR (ocrTooth)</h4>
+                  <div class="field-grid">
+                    <label>POS X<input id="ocrToothX" type="number" min="1"/></label>
+                    <label>POS Y<input id="ocrToothY" type="number" min="1"/></label>
+                    <label>WIDTH<input id="ocrToothWidth" type="number" min="1"/></label>
+                    <label>HEIGHT<input id="ocrToothHeight" type="number" min="1"/></label>
+                  </div>
+                </section>
 
-    <footer class="status-bar">
-      <span id="statusText">設定檔已載入。</span>
+                <section class="region-card">
+                  <h4>補充 OCR (ocrExtra)</h4>
+                  <div class="field-grid">
+                    <label>POS X<input id="ocrExtraX" type="number" min="1"/></label>
+                    <label>POS Y<input id="ocrExtraY" type="number" min="1"/></label>
+                    <label>WIDTH<input id="ocrExtraWidth" type="number" min="1"/></label>
+                    <label>HEIGHT<input id="ocrExtraHeight" type="number" min="1"/></label>
+                  </div>
+                </section>
+
+                <section class="region-card">
+                  <h4>貼圖錨點 (overlayAnchor)</h4>
+                  <div class="field-grid">
+                    <label>POS X<input id="overlayAnchorX" type="number" min="1"/></label>
+                    <label>POS Y<input id="overlayAnchorY" type="number" min="1"/></label>
+                  </div>
+                </section>
+
     </footer>
   `
 }

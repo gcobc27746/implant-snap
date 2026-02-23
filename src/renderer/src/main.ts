@@ -18,10 +18,11 @@ type UiState = {
 function injectStyles(): void {
   const style = document.createElement('style')
   style.textContent = `
-    :root { color-scheme: dark; font-family: Inter, sans-serif; }
-    body { margin: 0; background: #101922; color: #e5edf7; }
-    .layout-root { display: grid; grid-template-columns: 220px 1fr 320px; gap: 12px; padding: 12px; height: calc(100vh - 46px); box-sizing: border-box; }
-    .card { background: #162431; border: 1px solid #294154; border-radius: 14px; padding: 12px; }
+    .tools-panel { width:330px; min-width:330px; border-left:1px solid #1f2c38; background:#111c27; overflow:auto; padding:16px 14px 16px 12px; display:grid; gap:14px; }
+
+    .region-form-grid { display:grid; gap:10px; }
+    .region-card { border:1px solid #233749; border-radius:10px; padding:8px; background:#101c27; }
+    .region-card h4 { margin:0 0 8px; font-size:12px; color:#cbd5e1; }
     h1,h2 { margin: 0 0 8px; }
     .left-nav p { margin-top: 0; color: #9db2c6; font-size: 13px; }
     .roi-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
@@ -127,62 +128,87 @@ async function bootstrap() {
 }
 
 function mount(state: UiState): void {
-  const roiList = document.getElementById('roiList') as HTMLUListElement
-  const roiLayer = document.getElementById('roiLayer') as HTMLDivElement
-  const viewport = document.getElementById('canvasViewport') as HTMLDivElement
-  const status = document.getElementById('statusText') as HTMLSpanElement
-  const validation = document.getElementById('validation') as HTMLParagraphElement
-
-  const fieldX = document.getElementById('fieldX') as HTMLInputElement
-  const fieldY = document.getElementById('fieldY') as HTMLInputElement
-  const fieldW = document.getElementById('fieldWidth') as HTMLInputElement
-  const fieldH = document.getElementById('fieldHeight') as HTMLInputElement
-  const widthWrap = document.getElementById('fieldWidthWrap') as HTMLLabelElement
-  const heightWrap = document.getElementById('fieldHeightWrap') as HTMLLabelElement
-
-  const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement
-  const resetRegionBtn = document.getElementById('resetRegionBtn') as HTMLButtonElement
-  const resetAllBtn = document.getElementById('resetAllBtn') as HTMLButtonElement
-
-  const sx = viewport.clientWidth / state.config.screenWidth
-  const sy = viewport.clientHeight / state.config.screenHeight
-  const toPxX = (n: number) => Math.round((n - 1) * sx)
-  const toPxY = (n: number) => Math.round((n - 1) * sy)
-  const toRealX = (n: number) => Math.max(1, Math.round(n / sx) + 1)
-  const toRealY = (n: number) => Math.max(1, Math.round(n / sy) + 1)
-
-  const renderInputs = () => {
-    const key = state.selected
-    const region = state.config.regions[key]
-    fieldX.value = String(region.x)
-    fieldY.value = String(region.y)
-    const isAnchor = key === 'overlayAnchor'
-    widthWrap.style.display = isAnchor ? 'none' : 'grid'
-    heightWrap.style.display = isAnchor ? 'none' : 'grid'
-    if (!isAnchor) {
-      const rect = region as RegionRect
-      fieldW.value = String(rect.width)
-      fieldH.value = String(rect.height)
+  const fields = {
+    cropMain: {
+      x: document.getElementById('cropMainX') as HTMLInputElement,
+      y: document.getElementById('cropMainY') as HTMLInputElement,
+      width: document.getElementById('cropMainWidth') as HTMLInputElement,
+      height: document.getElementById('cropMainHeight') as HTMLInputElement
+    },
+    ocrTooth: {
+      x: document.getElementById('ocrToothX') as HTMLInputElement,
+      y: document.getElementById('ocrToothY') as HTMLInputElement,
+      width: document.getElementById('ocrToothWidth') as HTMLInputElement,
+      height: document.getElementById('ocrToothHeight') as HTMLInputElement
+    },
+    ocrExtra: {
+      x: document.getElementById('ocrExtraX') as HTMLInputElement,
+      y: document.getElementById('ocrExtraY') as HTMLInputElement,
+      width: document.getElementById('ocrExtraWidth') as HTMLInputElement,
+      height: document.getElementById('ocrExtraHeight') as HTMLInputElement
+    },
+    overlayAnchor: {
+      x: document.getElementById('overlayAnchorX') as HTMLInputElement,
+      y: document.getElementById('overlayAnchorY') as HTMLInputElement
     }
-    ;(document.getElementById('editorTitle') as HTMLHeadingElement).textContent = `${ROI_META[key].label}`
   }
 
-  const renderRoiList = () => {
-    roiList.innerHTML = ''
-    ;(Object.keys(ROI_META) as RoiKey[]).forEach((key) => {
-      const li = document.createElement('li')
-      li.className = `roi-item ${state.selected === key ? 'active' : ''}`
-      li.innerHTML = `<span>${ROI_META[key].label}</span><span class="dot" style="background:${ROI_META[key].color}"></span>`
-      li.onclick = () => {
-        state.selected = key
-        renderRoiList()
-        renderInputs()
-      }
-      roiList.appendChild(li)
+    fields.cropMain.x.value = String(state.config.regions.cropMain.x)
+    fields.cropMain.y.value = String(state.config.regions.cropMain.y)
+    fields.cropMain.width.value = String(state.config.regions.cropMain.width)
+    fields.cropMain.height.value = String(state.config.regions.cropMain.height)
+
+    fields.ocrTooth.x.value = String(state.config.regions.ocrTooth.x)
+    fields.ocrTooth.y.value = String(state.config.regions.ocrTooth.y)
+    fields.ocrTooth.width.value = String(state.config.regions.ocrTooth.width)
+    fields.ocrTooth.height.value = String(state.config.regions.ocrTooth.height)
+
+    fields.ocrExtra.x.value = String(state.config.regions.ocrExtra.x)
+    fields.ocrExtra.y.value = String(state.config.regions.ocrExtra.y)
+    fields.ocrExtra.width.value = String(state.config.regions.ocrExtra.width)
+    fields.ocrExtra.height.value = String(state.config.regions.ocrExtra.height)
+
+    fields.overlayAnchor.x.value = String(state.config.regions.overlayAnchor.x)
+    fields.overlayAnchor.y.value = String(state.config.regions.overlayAnchor.y)
+
+    editorTitle.textContent = ROI_META[state.selected].chip
+    selectedColor.style.background = ROI_META[state.selected].color
+    toggleVisibleBtn.textContent = state.visibility[state.selected] ? 'visibility' : 'visibility_off'
+        dot.onclick = () => {
+          state.selected = 'overlayAnchor'
+          renderInputs()
+        }
+    state.selected = key
+
+
+  const syncRectFromFields = async (key: 'cropMain' | 'ocrTooth' | 'ocrExtra') => {
+    const set = fields[key]
+    state.config.regions[key] = {
+      x: Number(set.x.value),
+      y: Number(set.y.value),
+      width: Number(set.width.value),
+      height: Number(set.height.value)
+    state.selected = key
+    renderLayer()
+    renderInputs()
+    await applyValidation()
+  }
+  const syncAnchorFromFields = async () => {
+    state.config.regions.overlayAnchor = {
+      x: Number(fields.overlayAnchor.x.value),
+      y: Number(fields.overlayAnchor.y.value)
+    }
+    state.selected = 'overlayAnchor'
+  ;(['cropMain', 'ocrTooth', 'ocrExtra'] as const).forEach((key) => {
+    const set = fields[key]
+    ;[set.x, set.y, set.width, set.height].forEach((el) => {
+      el.addEventListener('input', () => void syncRectFromFields(key))
     })
+  })
+  fields.overlayAnchor.x.addEventListener('input', () => void syncAnchorFromFields())
+  fields.overlayAnchor.y.addEventListener('input', () => void syncAnchorFromFields())
   }
 
-  const startDrag = (key: RoiKey, event: PointerEvent, mode: 'move' | 'resize') => {
     const startX = event.clientX
     const startY = event.clientY
     const snapshot = deepClone(state.config.regions[key]) as RectLike
