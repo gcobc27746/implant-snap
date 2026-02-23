@@ -7,6 +7,8 @@ const BASE_HEIGHT = 720
 
 type ValidationResult = { valid: boolean; errors: string[] }
 
+type RectRegionKey = 'cropMain' | 'ocrTooth' | 'ocrExtra'
+
 type RectLike = RegionRect & { visible?: boolean }
 
 type UiState = {
@@ -344,3 +346,13 @@ void bootstrap()
       const selectedRectKey: 'cropMain' | 'ocrTooth' | 'ocrExtra' = state.selected
       state.config.regions[selectedRectKey] = clone(base.regions[selectedRectKey])
     }
+  const resetSelectedRegion = (base: AppConfig): void => {
+      return
+
+    const selectedRectKey: RectRegionKey = state.selected
+    state.config.regions[selectedRectKey] = clone(base.regions[selectedRectKey])
+  }
+
+  resetRegionBtn.onclick = async () => {
+    const base = await api.reset()
+    resetSelectedRegion(base)
