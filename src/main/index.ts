@@ -1,10 +1,16 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { AppLifecycleService } from './lifecycle/AppLifecycleService'
 import { ConfigService } from './config/ConfigService'
 import type { AppConfig } from './config/schema'
+import { CaptureService } from './capture/CaptureService'
+import { CropService } from './capture/CropService'
+import { CapturePipelineRunner } from './pipeline/CapturePipelineRunner'
 
 const configService = new ConfigService()
+const captureService = new CaptureService()
+const cropService = new CropService()
+const pipelineRunner = new CapturePipelineRunner(captureService, cropService)
 let mainWindow: BrowserWindow | null = null
 
 function createMainWindow(): BrowserWindow {
@@ -64,6 +70,26 @@ function registerIpcHandlers(): void {
   })
 }
 
+function registerCaptureShortcut(): void {
+  const shortcut = 'CommandOrControl+Shift+S'
+  const registered = globalShortcut.register(shortcut, async () => {
+    try {
+      const currentConfig = configService.load()
+      const { traceId } = await pipelineRunner.run(currentConfig)
+      console.log(`[CapturePipeline][traceId=${traceId}] 快捷鍵流程執行成功。`)
+    } catch (error) {
+      console.error(`[CapturePipeline] 快捷鍵流程失敗: ${(error as Error).message}`)
+    }
+  })
+
+  if (!registered) {
+    console.error(`[CapturePipeline] 無法註冊全域快捷鍵: ${shortcut}`)
+    return
+  }
+
+  console.log(`[CapturePipeline] 已註冊全域快捷鍵: ${shortcut}`)
+}
+
 app.whenReady().then(() => {
   mainWindow = createMainWindow()
 
@@ -74,6 +100,11 @@ app.whenReady().then(() => {
   // 啟動時載入設定，會順便做解析度比對與標記。
   configService.load()
   registerIpcHandlers()
+  registerCaptureShortcut()
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {
