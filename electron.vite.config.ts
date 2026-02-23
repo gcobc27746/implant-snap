@@ -21,6 +21,10 @@ export default defineConfig({
     }
   },
   renderer: {
-    root: 'src/renderer'
+    root: 'src/renderer',
+    server: {
+      host: '0.0.0.0',
+      port: 4173
+    }
   }
 })

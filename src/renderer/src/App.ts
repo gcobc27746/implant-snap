@@ -1,34 +1,53 @@
 import type { AppConfig } from '../../main/config/schema'
 
-export function renderConfigApp(config: AppConfig): string {
-  const { screenWidth, screenHeight, previewEnabled, requiresRegionRedefinition, regions } = config
+export type RoiKey = 'cropMain' | 'ocrTooth' | 'ocrExtra' | 'overlayAnchor'
 
+export const ROI_META: Record<RoiKey, { label: string; color: string }> = {
+  cropMain: { label: '主裁切區 (cropMain)', color: '#137fec' },
+  ocrTooth: { label: '牙號 OCR (ocrTooth)', color: '#16a34a' },
+  ocrExtra: { label: '補充 OCR (ocrExtra)', color: '#f59e0b' },
+  overlayAnchor: { label: 'Overlay 錨點 (overlayAnchor)', color: '#e11d48' }
+}
+
+export function renderConfigWorkbench(config: AppConfig): string {
   return `
-    <main style="font-family: Inter, sans-serif; padding: 20px; max-width: 780px; margin: 0 auto;">
-      <h1 style="margin-bottom: 10px;">ImplantSnap Step 01</h1>
-      <p style="margin-top: 0; color: #55606d;">目前已完成 ConfigStore + Tray 常駐主流程。</p>
+    <main class="layout-root">
+      <aside class="left-nav card">
+        <h1>ImplantSnap</h1>
+        <p>Step 03 設定模式工作台</p>
+        <ul id="roiList" class="roi-list"></ul>
+      </aside>
 
-      <section style="padding: 12px; border: 1px solid #d8e0ea; border-radius: 10px; margin-bottom: 12px;">
-        <h2 style="margin-top: 0;">螢幕資訊</h2>
-        <div>screenWidth: <strong>${screenWidth}</strong></div>
-        <div>screenHeight: <strong>${screenHeight}</strong></div>
-        <div>previewEnabled: <strong>${previewEnabled}</strong></div>
-        <div>requiresRegionRedefinition: <strong>${requiresRegionRedefinition}</strong></div>
+      <section class="canvas-panel card">
+        <div class="panel-header">
+          <h2>Config Canvas</h2>
+          <span>screen: ${config.screenWidth} × ${config.screenHeight}</span>
+        </div>
+        <div id="canvasViewport" class="canvas-viewport">
+          <div id="roiLayer" class="roi-layer"></div>
+        </div>
       </section>
 
-      <section style="padding: 12px; border: 1px solid #d8e0ea; border-radius: 10px; margin-bottom: 12px;">
-        <h2 style="margin-top: 0;">座標設定</h2>
-        <pre style="background: #f6f7f8; padding: 12px; border-radius: 8px; overflow-x: auto;">${JSON.stringify(
-          regions,
-          null,
-          2
-        )}</pre>
-      </section>
+      <aside class="right-panel card">
+        <h2 id="editorTitle">區域屬性</h2>
+        <div class="field-grid">
+          <label>X <input id="fieldX" type="number" min="1" /></label>
+          <label>Y <input id="fieldY" type="number" min="1" /></label>
+          <label id="fieldWidthWrap">Width <input id="fieldWidth" type="number" min="1" /></label>
+          <label id="fieldHeightWrap">Height <input id="fieldHeight" type="number" min="1" /></label>
+        </div>
+        <p id="validation" class="validation"></p>
 
-      <button id="resetBtn" style="padding: 8px 14px; border: none; border-radius: 8px; background: #137fec; color: white; cursor: pointer;">
-        重設為預設值
-      </button>
-      <p id="status" style="margin-top: 12px; color: #2e3a47;"></p>
+        <div class="button-row">
+          <button id="saveBtn" class="btn-primary">儲存設定</button>
+          <button id="resetRegionBtn" class="btn-secondary">重置目前區域</button>
+          <button id="resetAllBtn" class="btn-secondary">重置全部設定</button>
+        </div>
+      </aside>
     </main>
+
+    <footer class="status-bar">
+      <span id="statusText">設定檔已載入。</span>
+    </footer>
   `
 }
