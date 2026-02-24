@@ -16,7 +16,7 @@ type ImplantSnapApi = {
 
 declare global {
   interface Window {
-    implantSnap: ImplantSnapApi
+    implantSnap?: ImplantSnapApi
   }
 }
 
