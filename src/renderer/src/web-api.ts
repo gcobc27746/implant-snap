@@ -89,7 +89,37 @@ function saveToStorage(config: AppConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
 }
 
-export function createWebConfigApi(): { config: typeof window.implantSnap.config } {
+async function fetchRandomSampleImage(): Promise<{
+  dataUrl: string
+  width: number
+  height: number
+}> {
+  const n = 1 + Math.floor(Math.random() * 5)
+  const url = new URL(`samples/${n}-1.png`, window.location.href).href
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('無法載入範例圖片')
+  const blob = await res.blob()
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = reject
+    r.readAsDataURL(blob)
+  })
+  const img = new Image()
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve()
+    img.onerror = reject
+    img.src = dataUrl
+  })
+  return { dataUrl, width: img.naturalWidth, height: img.naturalHeight }
+}
+
+export function createWebConfigApi(): {
+  config: typeof window.implantSnap.config
+  capture: {
+    fullScreen: () => Promise<{ dataUrl: string; width: number; height: number }>
+  }
+} {
   let memoryConfig: AppConfig = loadFromStorage()
   const screenWidth = typeof window !== 'undefined' ? window.screen?.width ?? 1920 : 1920
   const screenHeight = typeof window !== 'undefined' ? window.screen?.height ?? 1080 : 1080
@@ -100,8 +130,6 @@ export function createWebConfigApi(): { config: typeof window.implantSnap.config
         memoryConfig = loadFromStorage()
         memoryConfig = {
           ...memoryConfig,
-          screenWidth,
-          screenHeight,
           requiresRegionRedefinition:
             memoryConfig.screenWidth !== screenWidth || memoryConfig.screenHeight !== screenHeight
         }
@@ -109,34 +137,26 @@ export function createWebConfigApi(): { config: typeof window.implantSnap.config
         return memoryConfig
       },
       save: async (nextConfig: AppConfig): Promise<AppConfig> => {
-        const normalized: AppConfig = {
-          ...nextConfig,
-          screenWidth,
-          screenHeight
-        }
-        const result = validate(normalized)
+        const result = validate(nextConfig)
         if (!result.valid) throw new Error(result.errors.join('\n'))
-        memoryConfig = normalized
+        memoryConfig = { ...nextConfig }
         saveToStorage(memoryConfig)
         return memoryConfig
       },
       validate: async (candidate: AppConfig): Promise<ValidationResult> => {
-        return validate({
-          ...candidate,
-          screenWidth,
-          screenHeight
-        })
+        return validate(candidate)
       },
       reset: async (): Promise<AppConfig> => {
         memoryConfig = {
           ...DEFAULT_CONFIG,
-          screenWidth,
-          screenHeight,
           requiresRegionRedefinition: false
         }
         saveToStorage(memoryConfig)
         return memoryConfig
       }
+    },
+    capture: {
+      fullScreen: fetchRandomSampleImage
     }
   }
 }

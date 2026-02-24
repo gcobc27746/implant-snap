@@ -13,36 +13,19 @@
     "web": "vite serve --config vite.web.config.ts",
     "dist:win": "npm run build && electron-builder --win nsis"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/gcobc27746/implant-snap.git"
-  },
+  "repository": {"type": "git", "url": "git+https://github.com/gcobc27746/implant-snap.git"},
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/gcobc27746/implant-snap/issues"
-  },
+  "bugs": {"url": "https://github.com/gcobc27746/implant-snap/issues"},
   "homepage": "https://github.com/gcobc27746/implant-snap#readme",
   "build": {
     "appId": "com.implantsnap.app",
     "productName": "ImplantSnap",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "out/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+    "directories": {"output": "dist"},
+    "files": ["out/**/*", "package.json"],
+    "win": {"target": ["nsis"]},
+    "nsis": {"oneClick": false, "allowToChangeInstallationDirectory": true}
   },
   "dependencies": {
     "electron-store": "^11.0.2",

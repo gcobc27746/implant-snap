@@ -68,6 +68,11 @@ function registerIpcHandlers(): void {
   ipcMain.handle('config:reset', () => {
     return configService.reset()
   })
+  ipcMain.handle('capture:fullScreen', async () => {
+    const { buffer, size } = await captureService.captureFullScreen()
+    const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
+    return { dataUrl, width: size.width, height: size.height }
+  })
 }
 
 function registerCaptureShortcut(): void {

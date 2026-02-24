@@ -3,8 +3,12 @@ import { isRegionRect } from '@shared/config-schema'
 import Konva from 'konva'
 import '../main.css'
 
-const STAGE_WIDTH = 800
-const STAGE_HEIGHT = 450
+const FALLBACK_STAGE_WIDTH = 800
+const FALLBACK_STAGE_HEIGHT = 450
+const MIN_LAYER_SCALE = 0.1
+const MAX_LAYER_SCALE = 10
+const ZOOM_FACTOR = 1.15
+const WHEEL_PAN_PX = 40
 
 const REGION_LABELS: Record<RegionKey, string> = {
   cropMain: 'MAIN CROP',
@@ -32,12 +36,27 @@ const TAG_TEXT_COLOR: Record<'cropMain' | 'ocrTooth' | 'ocrExtra', string> = {
   ocrExtra: '#0f172a'
 }
 
+type SidebarSection = 'capture' | 'history' | 'extraction' | 'settings'
+
+const SIDEBAR_SECTIONS: Record<
+  SidebarSection,
+  { icon: string; title: string }
+> = {
+  capture: { icon: 'layers', title: 'Capture Config' },
+  history: { icon: 'history', title: 'History' },
+  extraction: { icon: 'analytics', title: 'Extraction Logs' },
+  settings: { icon: 'settings', title: 'Settings' }
+}
+
 interface ConfigPageState {
   config: AppConfig
   selectedRegionKey: RegionKey | null
   visibility: Record<RegionKey, boolean>
   panelError: string
   statusMessage: string
+  activeSection: SidebarSection
+  lastCaptureDataUrl: string | null
+  lastCaptureSize: { width: number; height: number } | null
 }
 
 let state: ConfigPageState = {
@@ -45,39 +64,53 @@ let state: ConfigPageState = {
   selectedRegionKey: null,
   visibility: { cropMain: true, ocrTooth: true, ocrExtra: true, overlayAnchor: true },
   panelError: '',
-  statusMessage: '就緒'
+  statusMessage: '就緒',
+  activeSection: 'capture',
+  lastCaptureDataUrl: null,
+  lastCaptureSize: null
 }
 
 let stage: Konva.Stage
 let layer: Konva.Layer
 let transformer: Konva.Transformer
+let bgNode: Konva.Rect | Konva.Image
 const shapeRefs: Partial<Record<RegionKey, Konva.Rect | Konva.Circle | Konva.Group>> = {}
 const tagRefs: Partial<Record<'cropMain' | 'ocrTooth' | 'ocrExtra', Konva.Label>> = {}
 
-function scaleToStage(config: AppConfig) {
+function scaleToStage(
+  config: AppConfig,
+  stageW: number = FALLBACK_STAGE_WIDTH,
+  stageH: number = FALLBACK_STAGE_HEIGHT
+) {
   const w = config.screenWidth
   const h = config.screenHeight
   return {
-    x: (v: number) => (v / w) * STAGE_WIDTH,
-    y: (v: number) => (v / h) * STAGE_HEIGHT,
-    width: (v: number) => (v / w) * STAGE_WIDTH,
-    height: (v: number) => (v / h) * STAGE_HEIGHT
+    x: (v: number) => (v / w) * stageW,
+    y: (v: number) => (v / h) * stageH,
+    width: (v: number) => (v / w) * stageW,
+    height: (v: number) => (v / h) * stageH
   }
 }
 
-function scaleFromStage(config: AppConfig) {
+function scaleFromStage(
+  config: AppConfig,
+  stageW: number = FALLBACK_STAGE_WIDTH,
+  stageH: number = FALLBACK_STAGE_HEIGHT
+) {
   const w = config.screenWidth
   const h = config.screenHeight
   return {
-    x: (v: number) => Math.round((v / STAGE_WIDTH) * w),
-    y: (v: number) => Math.round((v / STAGE_HEIGHT) * h),
-    width: (v: number) => Math.round((v / STAGE_WIDTH) * w),
-    height: (v: number) => Math.round((v / STAGE_HEIGHT) * h)
+    x: (v: number) => Math.round((v / stageW) * w),
+    y: (v: number) => Math.round((v / stageH) * h),
+    width: (v: number) => Math.round((v / stageW) * w),
+    height: (v: number) => Math.round((v / stageH) * h)
   }
 }
 
 function syncConfigFromKonva(config: AppConfig): AppConfig {
-  const scaleFrom = scaleFromStage(config)
+  const stageW = stage?.width() ?? config.screenWidth
+  const stageH = stage?.height() ?? config.screenHeight
+  const scaleFrom = scaleFromStage(config, stageW, stageH)
   const next = { ...config, regions: { ...config.regions } }
 
   const cropMain = shapeRefs.cropMain
@@ -118,28 +151,30 @@ function syncConfigFromKonva(config: AppConfig): AppConfig {
 }
 
 function buildKonvaStage(container: HTMLDivElement, config: AppConfig) {
-  const scaleTo = scaleToStage(config)
+  const stageW = config.screenWidth
+  const stageH = config.screenHeight
+  const scaleTo = scaleToStage(config, stageW, stageH)
   const { regions } = config
 
   if (stage) stage.destroy()
   stage = new Konva.Stage({
     container,
-    width: STAGE_WIDTH,
-    height: STAGE_HEIGHT,
+    width: stageW,
+    height: stageH,
     draggable: false
   })
 
   layer = new Konva.Layer()
   stage.add(layer)
 
-  const bg = new Konva.Rect({
+  bgNode = new Konva.Rect({
     x: 0,
     y: 0,
-    width: STAGE_WIDTH,
-    height: STAGE_HEIGHT,
+    width: stageW,
+    height: stageH,
     fill: '#1e293b'
   })
-  layer.add(bg)
+  layer.add(bgNode)
 
   const addRect = (key: 'cropMain' | 'ocrTooth' | 'ocrExtra') => {
     const r = regions[key]
@@ -263,15 +298,122 @@ function buildKonvaStage(container: HTMLDivElement, config: AppConfig) {
   layer.add(transformer)
 
   stage.on('click', (e) => {
-    if (e.target === stage || e.target === layer || e.target === bg) {
+    if (e.target === stage || e.target === layer || e.target === bgNode) {
       state.selectedRegionKey = null
       transformer.nodes([])
       updatePanelSelection()
     }
   })
 
+  stage.on('mousemove', () => {
+    const pos = stage.getPointerPosition()
+    if (pos && layer) {
+      const sx = layer.scaleX()
+      const sy = layer.scaleY()
+      const lx = layer.x()
+      const ly = layer.y()
+      const imgX = (pos.x - lx) / sx
+      const imgY = (pos.y - ly) / sy
+      updateStatusCursor(Math.round(imgX), Math.round(imgY))
+    }
+  })
+  stage.on('mouseleave', () => updateStatusCursor(null, null))
+
+  stage.on('wheel', (e) => {
+    e.evt.preventDefault()
+    if (!layer) return
+    const scaleX = layer.scaleX()
+    const scaleY = layer.scaleY()
+    const dx = layer.x()
+    const dy = layer.y()
+    const pointer = stage.getPointerPosition()
+    const delta = e.evt.deltaY
+
+    if (e.evt.ctrlKey) {
+      const factor = delta > 0 ? 1 / ZOOM_FACTOR : ZOOM_FACTOR
+      const newScale = Math.min(
+        MAX_LAYER_SCALE,
+        Math.max(MIN_LAYER_SCALE, scaleX * factor)
+      )
+      if (pointer) {
+        const layerLocalX = (pointer.x - dx) / scaleX
+        const layerLocalY = (pointer.y - dy) / scaleY
+        layer.scaleX(newScale)
+        layer.scaleY(newScale)
+        layer.x(pointer.x - layerLocalX * newScale)
+        layer.y(pointer.y - layerLocalY * newScale)
+      } else {
+        layer.scaleX(newScale)
+        layer.scaleY(newScale)
+      }
+    } else if (e.evt.shiftKey) {
+      layer.x(dx + (delta > 0 ? -WHEEL_PAN_PX : WHEEL_PAN_PX))
+    } else {
+      layer.y(dy + (delta > 0 ? -WHEEL_PAN_PX : WHEEL_PAN_PX))
+    }
+    layer.batchDraw()
+  })
+
   updateVisibility()
   layer.draw()
+}
+
+function setStageBackground(dataUrl: string): void {
+  if (!layer) return
+  const img = new Image()
+  img.onload = () => {
+    if (!layer) return
+    if (bgNode) {
+      bgNode.destroy()
+    }
+    const w = state.config.screenWidth
+    const h = state.config.screenHeight
+    const konvaImage = new Konva.Image({
+      image: img,
+      x: 0,
+      y: 0,
+      width: w,
+      height: h,
+      listening: true
+    })
+    layer.add(konvaImage)
+    konvaImage.moveToBottom()
+    bgNode = konvaImage
+    layer.draw()
+  }
+  img.onerror = () => {
+    state.statusMessage = '截圖載入失敗'
+    updateStatusMessage()
+  }
+  img.src = dataUrl
+}
+
+async function handleStartCapture(): Promise<void> {
+  const btn = document.getElementById('btnStartCapture') as HTMLButtonElement | null
+  if (btn) {
+    btn.disabled = true
+  }
+  state.statusMessage = '截圖中…'
+  updateStatusMessage()
+  try {
+    const result = await window.implantSnap.capture.fullScreen()
+    state.config.screenWidth = result.width
+    state.config.screenHeight = result.height
+    state.lastCaptureDataUrl = result.dataUrl
+    state.lastCaptureSize = { width: result.width, height: result.height }
+    state.statusMessage = `截圖完成 ${result.width}×${result.height}`
+    const container = document.getElementById('canvasContainer') as HTMLDivElement
+    if (container) {
+      buildKonvaStage(container, state.config)
+      setStageBackground(result.dataUrl)
+    }
+  } catch (e) {
+    state.statusMessage = `截圖失敗: ${(e as Error).message}`
+  }
+  updateStatusMessage()
+  if (btn) {
+    btn.disabled = false
+  }
 }
 
 function updateVisibility() {
@@ -426,6 +568,16 @@ function updateStatusBar() {
   }
 }
 
+function updateStatusCursor(x: number | null, y: number | null) {
+  const el = document.getElementById('statusCursor') as HTMLElement
+  if (!el) return
+  if (x === null || y === null) {
+    el.textContent = 'Cursor: —, —'
+    return
+  }
+  el.textContent = `Cursor: ${x}, ${y}`
+}
+
 function validateCurrentConfig(): string[] {
   const result = window.implantSnap.config.validate(state.config)
   return (result as { then: (fn: (r: { errors: string[] }) => void) => void }).then
@@ -486,6 +638,31 @@ function updateStatusMessage() {
   if (el) el.textContent = state.statusMessage
 }
 
+function updateHeaderFromSection() {
+  const { icon, title } = SIDEBAR_SECTIONS[state.activeSection]
+  const iconEl = document.getElementById('mainHeaderIcon')
+  const titleEl = document.getElementById('mainHeaderTitle')
+  if (iconEl) {
+    iconEl.textContent = icon
+  }
+  if (titleEl) {
+    titleEl.textContent = title
+  }
+}
+
+function updateSidebarActiveState() {
+  const nav = document.querySelector('aside.w-64 nav')
+  if (!nav) return
+  nav.querySelectorAll('a[data-section]').forEach((a) => {
+    const link = a as HTMLAnchorElement
+    const section = link.dataset.section as SidebarSection
+    const isActive = section === state.activeSection
+    link.className = isActive
+      ? 'flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary group'
+      : 'flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'
+  })
+}
+
 export async function mountConfigPage(root: HTMLElement) {
   const config = await window.implantSnap.config.load()
   state.config = config
@@ -507,19 +684,19 @@ export async function mountConfigPage(root: HTMLElement) {
 </div>
 </div>
 <nav class="flex-1 px-4 space-y-1">
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary group" href="#">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary group" href="#" data-section="capture">
 <span class="material-symbols-outlined">crop_free</span>
 <span class="text-sm font-medium">Capture Config</span>
 </a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#" data-section="history">
 <span class="material-symbols-outlined">history</span>
 <span class="text-sm font-medium">History</span>
 </a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#" data-section="extraction">
 <span class="material-symbols-outlined">analytics</span>
 <span class="text-sm font-medium">Extraction Logs</span>
 </a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#" data-section="settings">
 <span class="material-symbols-outlined">settings</span>
 <span class="text-sm font-medium">Settings</span>
 </a>
@@ -536,15 +713,6 @@ export async function mountConfigPage(root: HTMLElement) {
 </div>
 </div>
 </div>
-<div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-<span class="material-symbols-outlined text-sm">person</span>
-</div>
-<div class="flex-1 min-w-0">
-<p class="text-xs font-bold truncate">Dr. Julian Smith</p>
-<p class="text-[10px] text-slate-500 truncate">Radiology Dept.</p>
-</div>
-</div>
 </aside>
 <!-- Main Workspace -->
 <main class="flex-1 flex flex-col bg-slate-50 dark:bg-background-dark overflow-hidden">
@@ -552,22 +720,16 @@ export async function mountConfigPage(root: HTMLElement) {
 <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 bg-white dark:bg-background-dark/80 backdrop-blur-md z-10">
 <div class="flex items-center gap-4">
 <h2 class="text-sm font-bold flex items-center gap-2">
-<span class="text-primary material-symbols-outlined">layers</span>
-                        Region Configuration
-                    </h2>
-<div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
-<div class="flex items-center gap-2 text-xs text-slate-500">
-<span>Workspace 01</span>
-<span class="material-symbols-outlined text-xs">chevron_right</span>
-<span class="text-slate-900 dark:text-slate-200 font-medium">Standard Orthopantomogram</span>
-</div>
+<span id="mainHeaderIcon" class="text-primary material-symbols-outlined">layers</span>
+<span id="mainHeaderTitle">Capture Config</span>
+</h2>
 </div>
 <div class="flex items-center gap-3">
 <button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent">
 <span class="material-symbols-outlined text-sm">image</span>
                         Update Sample
                     </button>
-<button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 flex items-center gap-2 transition-all active:scale-95">
+<button id="btnStartCapture" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
 <span class="material-symbols-outlined text-sm leading-none">play_arrow</span>
                         Start Capture
                     </button>
@@ -750,20 +912,14 @@ export async function mountConfigPage(root: HTMLElement) {
 </div>
 <!-- Bottom Status Bar -->
 <footer class="h-10 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark/95 flex items-center justify-between px-6 text-[11px] font-medium text-slate-500">
-<div class="flex items-center gap-6">
 <div class="flex items-center gap-2">
 <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-<span id="statusMessage">Engine: Ready</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[14px]">memory</span>
-<span>GPU Acceleration: Enabled</span>
-</div>
+<span id="statusMessage">就緒</span>
 </div>
 <div class="flex items-center gap-4">
 <span id="statusSelection">Selected: 80x90px</span>
 <div class="h-3 w-px bg-slate-200 dark:bg-slate-800"></div>
-<span id="statusCursor">Cursor: 1042, 350</span>
+<span id="statusCursor">Cursor: —, —</span>
 </div>
 </footer>
 </main>
@@ -771,9 +927,25 @@ export async function mountConfigPage(root: HTMLElement) {
 
   const container = document.getElementById('canvasContainer') as HTMLDivElement
   buildKonvaStage(container, state.config)
+  if (state.lastCaptureDataUrl) {
+    setStageBackground(state.lastCaptureDataUrl)
+  }
 
   document.getElementById('btnSave')?.addEventListener('click', handleSave)
   document.getElementById('btnReset')?.addEventListener('click', handleReset)
+  document.getElementById('btnStartCapture')?.addEventListener('click', handleStartCapture)
+
+  document.querySelectorAll('aside.w-64 nav a[data-section]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      const section = (a as HTMLAnchorElement).dataset.section as SidebarSection
+      if (section && SIDEBAR_SECTIONS[section]) {
+        state.activeSection = section
+        updateHeaderFromSection()
+        updateSidebarActiveState()
+      }
+    })
+  })
   const visibilityBtnIds: Record<RegionKey, string> = {
     cropMain: 'btnVisibilityCropMain',
     ocrTooth: 'btnVisibilityOcrTooth',
@@ -810,4 +982,6 @@ export async function mountConfigPage(root: HTMLElement) {
 
   updatePanelSelection()
   updateStatusBar()
+  updateHeaderFromSection()
+  updateSidebarActiveState()
 }
