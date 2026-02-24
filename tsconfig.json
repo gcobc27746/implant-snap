@@ -7,13 +7,11 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
-    "types": [
-      "node",
-      "electron-vite/node"
-    ]
+    "types": ["node", "electron-vite/node"],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["src/shared/*"]
+    }
   },
-  "include": [
-    "electron.vite.config.ts",
-    "src/**/*"
-  ]
+  "include": ["electron.vite.config.ts", "src/**/*"]
 }

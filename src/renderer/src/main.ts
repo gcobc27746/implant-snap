@@ -1,30 +1,16 @@
-import { renderConfigApp } from './App'
+// Web 模式：無 Electron 時掛上 mock API
+if (typeof window !== 'undefined' && typeof (window as unknown as { implantSnap?: unknown }).implantSnap === 'undefined') {
+  const { createWebConfigApi } = await import('./web-api')
+  ;(window as unknown as { implantSnap: unknown }).implantSnap = createWebConfigApi()
+}
+
+import { mountConfigPage } from './config-page/ConfigPage'
 
 async function bootstrap() {
   const root = document.getElementById('app')
-  if (!root) {
-    return
-  }
-
-  const config = await window.implantSnap.config.load()
-  root.innerHTML = renderConfigApp(config)
-
-  const status = document.getElementById('status')
-  const resetButton = document.getElementById('resetBtn')
-
-  resetButton?.addEventListener('click', async () => {
-    await window.implantSnap.config.reset()
-    const updated = await window.implantSnap.config.load()
-    root.innerHTML = renderConfigApp(updated)
-    const nextStatus = document.getElementById('status')
-    if (nextStatus) {
-      nextStatus.textContent = '已重設設定檔。'
-    }
-  })
-
-  if (status) {
-    status.textContent = '設定檔已載入。'
-  }
+  if (!root) return
+  root.innerHTML = ''
+  await mountConfigPage(root)
 }
 
 bootstrap()

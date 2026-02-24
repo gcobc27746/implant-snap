@@ -1,0 +1,233 @@
+/* Step 03 - 對齊 docs/ui/configuration.html */
+:root {
+  --primary: #137fec;
+  --background-light: #f6f7f8;
+  --background-dark: #101922;
+  --border-light: #e2e8f0;
+  --border-dark: #1e293b;
+  --text-muted: #64748b;
+  --crop-main: #10b981;
+  --ocr-extra: #22d3ee;
+}
+
+.dark {
+  --bg: var(--background-dark);
+  --border: var(--border-dark);
+  --panel-bg: rgba(16, 25, 34, 0.5);
+  --input-bg: #1e293b;
+}
+.config-page {
+  font-family: Inter, "Segoe UI", sans-serif;
+  background: var(--background-light);
+  color: #0f172a;
+}
+.dark .config-page {
+  background: var(--background-dark);
+  color: #e2e8f0;
+}
+
+.config-page .sidebar {
+  width: 16rem;
+  border-right: 1px solid var(--border-light);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.dark .config-page .sidebar {
+  border-color: var(--border-dark);
+  background: var(--background-dark);
+}
+
+.config-page .logo-box {
+  background: var(--primary);
+  color: white;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.config-page .nav-item-active {
+  background: rgba(19, 127, 236, 0.1);
+  color: var(--primary);
+  border-radius: 0.5rem;
+}
+
+.config-page .nav-item {
+  color: var(--text-muted);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+.config-page .nav-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+.dark .config-page .nav-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.config-page .main-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  overflow: hidden;
+}
+.dark .config-page .main-workspace {
+  background: var(--background-dark);
+}
+
+.config-page .header-bar {
+  height: 4rem;
+  border-bottom: 1px solid var(--border-light);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(12px);
+}
+.dark .config-page .header-bar {
+  border-color: var(--border-dark);
+  background: rgba(16, 25, 34, 0.8);
+}
+
+.config-page .btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.config-page .btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.config-page .canvas-wrap {
+  flex: 1;
+  padding: 1.5rem;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+.dark .config-page .canvas-wrap {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0);
+}
+
+.config-page .canvas-stage-container {
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+.dark .config-page .canvas-stage-container {
+  border-color: var(--border-dark);
+}
+
+.config-page .panel-right {
+  width: 20rem;
+  border-left: 1px solid var(--border-light);
+  background: rgba(255,255,255,0.5);
+  overflow-y: auto;
+}
+.dark .config-page .panel-right {
+  border-color: var(--border-dark);
+  background: var(--panel-bg);
+}
+
+.config-page .panel-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.config-page .input-px {
+  background: #f1f5f9;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+  border: 1px solid transparent;
+  width: 100%;
+}
+.config-page .input-px:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(19, 127, 236, 0.2);
+}
+.dark .config-page .input-px {
+  background: var(--input-bg);
+}
+
+.config-page .error-text {
+  font-size: 0.75rem;
+  color: #dc2626;
+  margin-top: 0.25rem;
+}
+
+.config-page .btn-save {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+}
+.config-page .btn-save:hover {
+  background: rgba(0,0,0,0.03);
+}
+.dark .config-page .btn-save:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.config-page .btn-reset {
+  width: 100%;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  color: #dc2626;
+  cursor: pointer;
+  background: transparent;
+}
+.config-page .btn-reset:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.config-page .status-bar {
+  height: 2.5rem;
+  border-top: 1px solid var(--border-light);
+  padding: 0 1.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.95);
+}
+.dark .config-page .status-bar {
+  border-color: var(--border-dark);
+  background: rgba(16, 25, 34, 0.95);
+}
+
+.config-page .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--crop-main);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% { opacity: 0.6; }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

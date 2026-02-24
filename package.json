@@ -10,6 +10,7 @@
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
+    "web": "vite serve --config vite.web.config.ts",
     "dist:win": "npm run build && electron-builder --win nsis"
   },
   "repository": {
@@ -45,15 +46,19 @@
   },
   "dependencies": {
     "electron-store": "^11.0.2",
+    "konva": "^10.2.0",
     "screenshot-desktop": "^1.15.3",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
+    "autoprefixer": "^10.4.24",
     "electron": "^40.6.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
   }
 }

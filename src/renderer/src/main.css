@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Step 03 - 自訂覆寫（對齊 docs/ui/configuration.html） */
+:root {
+  --primary: #137fec;
+  --background-light: #f6f7f8;
+  --background-dark: #101922;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.config-page .canvas-wrap {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+.dark .config-page .canvas-wrap {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
+}
+
+.config-page .status-dot {
+  animation: config-pulse 1.5s ease-in-out infinite;
+}
+@keyframes config-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
