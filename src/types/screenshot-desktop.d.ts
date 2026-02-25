@@ -3,6 +3,7 @@ declare module 'screenshot-desktop' {
     format?: 'png' | 'jpg'
     screen?: string | number
     filename?: string
+    linuxLibrary?: 'scrot' | 'imagemagick'
   }
 
   function screenshot(options?: ScreenshotOptions): Promise<Buffer>

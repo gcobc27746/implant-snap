@@ -4,7 +4,7 @@ import type { ImageBuffer } from './types'
 
 export class CaptureService {
   async captureFullScreen(): Promise<ImageBuffer> {
-    const imageBuffer = await screenshot({ format: 'png' })
+    const imageBuffer = await screenshot({ format: 'png', linuxLibrary: 'scrot' })
     const metadata = await sharp(imageBuffer).metadata()
 
     if (!metadata.width || !metadata.height) {
