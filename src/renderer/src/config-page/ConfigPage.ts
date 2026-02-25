@@ -70,10 +70,11 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
     },
     async onCapture() {
       try {
-        statusMsg.textContent = '擷取中…'
-        const result = await window.implantSnap.capture.fullScreen()
-        canvas.setBackground(result.dataUrl)
-        statusMsg.textContent = `✓ 擷取完成 (${result.width}×${result.height})`
+        statusMsg.textContent = '擷取 + OCR 執行中…'
+        const { capture, ocr } = await window.implantSnap.pipeline.run()
+        canvas.setBackground(capture.dataUrl)
+        updateOcrDisplay(ocr)
+        statusMsg.textContent = `✓ 擷取+OCR 完成 (${capture.width}×${capture.height})`
       } catch (err) {
         statusMsg.textContent = `✗ 擷取失敗: ${(err as Error).message}`
       }
@@ -105,6 +106,38 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
     canvas.setBackground(result.dataUrl)
     statusMsg.textContent = `✓ 快捷鍵擷取完成 (${result.width}×${result.height})`
   })
+
+  window.implantSnap.pipeline.onOcrResult((ocr) => {
+    updateOcrDisplay(ocr)
+  })
+
+  const ocrResultEl = root.querySelector<HTMLElement>('#ocrResult')!
+
+  function updateOcrDisplay(ocr: { parsed: { tooth: string | null; diameter: string | null; length: string | null }; raw: { tooth: { text: string; confidence: number }; extra: { text: string; confidence: number } }; errors: string[] }) {
+    const { tooth, diameter, length } = ocr.parsed
+    const overlay = tooth && diameter && length
+      ? `${tooth} ( ${diameter} x ${length} )`
+      : '—'
+
+    ocrResultEl.innerHTML = `
+      <div class="text-xs space-y-1.5">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase w-12">結果</span>
+          <span class="font-mono font-bold ${tooth && diameter && length ? 'text-emerald-400' : 'text-amber-400'}">${overlay}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase w-12">牙位</span>
+          <span class="font-mono">${tooth ?? '<span class="text-red-400">未辨識</span>'}</span>
+          <span class="text-slate-600 text-[10px]">(${Math.round(ocr.raw.tooth.confidence)}%)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase w-12">規格</span>
+          <span class="font-mono">${diameter && length ? `${diameter} × ${length}` : '<span class="text-red-400">未辨識</span>'}</span>
+          <span class="text-slate-600 text-[10px]">(${Math.round(ocr.raw.extra.confidence)}%)</span>
+        </div>
+        ${ocr.errors.length ? `<div class="text-amber-400 text-[10px]">⚠ ${ocr.errors.join('; ')}</div>` : ''}
+      </div>`
+  }
 
   statusMsg.textContent = '就緒'
   updateStatusSelection()
@@ -163,6 +196,10 @@ function buildLayout(): string {
       <div id="canvasContainer" class="flex-1 relative overflow-hidden bg-slate-900/5 dark:bg-slate-900"></div>
       <aside class="w-72 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark/50 overflow-y-auto shrink-0">
         <div id="panelContainer" class="p-5 space-y-4"></div>
+        <div class="px-5 pb-4">
+          <div class="h-px bg-slate-200 dark:bg-slate-800 mb-4"></div>
+          <div id="ocrResult" class="text-slate-400 text-[11px]">尚未執行 OCR</div>
+        </div>
       </aside>
     </div>
 

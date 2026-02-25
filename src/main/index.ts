@@ -5,12 +5,14 @@ import { ConfigService } from './config/ConfigService'
 import type { AppConfig } from './config/schema'
 import { CaptureService } from './capture/CaptureService'
 import { CropService } from './capture/CropService'
+import { OcrService } from './ocr/OcrService'
 import { CapturePipelineRunner } from './pipeline/CapturePipelineRunner'
 
 const configService = new ConfigService()
 const captureService = new CaptureService()
 const cropService = new CropService()
-const pipelineRunner = new CapturePipelineRunner(captureService, cropService)
+const ocrService = new OcrService({ debug: true })
+const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService)
 let mainWindow: BrowserWindow | null = null
 
 function createMainWindow(): BrowserWindow {
@@ -70,16 +72,35 @@ function registerIpcHandlers(): void {
     const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
     return { dataUrl, width: size.width, height: size.height }
   })
+
+  ipcMain.handle('pipeline:run', async () => {
+    const currentConfig = configService.load()
+    const { crops, ocr } = await pipelineRunner.run(currentConfig)
+    const dataUrl = `data:image/png;base64,${crops.cropMain.buffer.toString('base64')}`
+    return {
+      capture: { dataUrl, width: crops.cropMain.size.width, height: crops.cropMain.size.height },
+      ocr
+    }
+  })
 }
 
 function registerCaptureShortcut(): void {
   const shortcut = 'CommandOrControl+Shift+S'
   const registered = globalShortcut.register(shortcut, async () => {
     try {
-      await captureAndSendToRenderer()
-
       const currentConfig = configService.load()
-      const { traceId } = await pipelineRunner.run(currentConfig)
+      const { traceId, crops, ocr } = await pipelineRunner.run(currentConfig)
+
+      const dataUrl = `data:image/png;base64,${crops.cropMain.buffer.toString('base64')}`
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('capture:result', {
+          dataUrl,
+          width: crops.cropMain.size.width,
+          height: crops.cropMain.size.height
+        })
+        mainWindow.webContents.send('pipeline:ocrResult', ocr)
+      }
+
       console.log(`[CapturePipeline][${traceId}] 快捷鍵流程執行成功。`)
     } catch (error) {
       console.error(`[CapturePipeline] 快捷鍵流程失敗: ${(error as Error).message}`)
