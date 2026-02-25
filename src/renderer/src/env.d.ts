@@ -1,9 +1,4 @@
-import type { AppConfig } from '../../main/config/schema'
-
-type ValidationResult = {
-  valid: boolean
-  errors: string[]
-}
+import type { AppConfig, ValidationResult } from '@shared/config-schema'
 
 type ImplantSnapApi = {
   config: {
@@ -11,6 +6,9 @@ type ImplantSnapApi = {
     save: (nextConfig: AppConfig) => Promise<AppConfig>
     validate: (candidate: AppConfig) => Promise<ValidationResult>
     reset: () => Promise<AppConfig>
+  }
+  capture: {
+    fullScreen: () => Promise<{ dataUrl: string; width: number; height: number }>
   }
 }
 

@@ -1,22 +1,29 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { AppLifecycleService } from './lifecycle/AppLifecycleService'
 import { ConfigService } from './config/ConfigService'
 import type { AppConfig } from './config/schema'
+import { CaptureService } from './capture/CaptureService'
+import { CropService } from './capture/CropService'
+import { CapturePipelineRunner } from './pipeline/CapturePipelineRunner'
 
 const configService = new ConfigService()
+const captureService = new CaptureService()
+const cropService = new CropService()
+const pipelineRunner = new CapturePipelineRunner(captureService, cropService)
 let mainWindow: BrowserWindow | null = null
 
 function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
-    width: 1100,
-    height: 720,
+    width: 1280,
+    height: 800,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false
     }
   })
 
@@ -36,32 +43,39 @@ function createMainWindow(): BrowserWindow {
 }
 
 function showAndFocusConfigWindow(): void {
-  if (!mainWindow) {
-    return
-  }
-
-  if (mainWindow.isMinimized()) {
-    mainWindow.restore()
-  }
-  if (!mainWindow.isVisible()) {
-    mainWindow.show()
-  }
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  if (!mainWindow.isVisible()) mainWindow.show()
   mainWindow.focus()
 }
 
 function registerIpcHandlers(): void {
-  ipcMain.handle('config:load', () => {
-    return configService.load()
+  ipcMain.handle('config:load', () => configService.load())
+  ipcMain.handle('config:save', (_event, nextConfig: AppConfig) => configService.save(nextConfig))
+  ipcMain.handle('config:validate', (_event, candidate: AppConfig) => configService.validate(candidate))
+  ipcMain.handle('config:reset', () => configService.reset())
+
+  ipcMain.handle('capture:fullScreen', async () => {
+    const { buffer, size } = await captureService.captureFullScreen()
+    const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
+    return { dataUrl, width: size.width, height: size.height }
   })
-  ipcMain.handle('config:save', (_event, nextConfig: AppConfig) => {
-    return configService.save(nextConfig)
+}
+
+function registerCaptureShortcut(): void {
+  const shortcut = 'CommandOrControl+Shift+S'
+  const registered = globalShortcut.register(shortcut, async () => {
+    try {
+      const currentConfig = configService.load()
+      const { traceId } = await pipelineRunner.run(currentConfig)
+      console.log(`[CapturePipeline][${traceId}] 快捷鍵流程執行成功。`)
+    } catch (error) {
+      console.error(`[CapturePipeline] 快捷鍵流程失敗: ${(error as Error).message}`)
+    }
   })
-  ipcMain.handle('config:validate', (_event, candidate: AppConfig) => {
-    return configService.validate(candidate)
-  })
-  ipcMain.handle('config:reset', () => {
-    return configService.reset()
-  })
+  if (!registered) {
+    console.error(`[CapturePipeline] 無法註冊全域快捷鍵: ${shortcut}`)
+  }
 }
 
 app.whenReady().then(() => {
@@ -71,11 +85,15 @@ app.whenReady().then(() => {
   lifecycleService.attachWindowCloseBehavior(mainWindow)
   lifecycleService.initializeTray()
 
-  // 啟動時載入設定，會順便做解析度比對與標記。
   configService.load()
   registerIpcHandlers()
+  registerCaptureShortcut()
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {
-  // Step 01 需要系統匣常駐，不在這裡自動退出。
+  // 系統匣常駐，不在這裡自動退出。
 })
