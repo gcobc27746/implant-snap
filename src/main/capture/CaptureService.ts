@@ -4,13 +4,24 @@ import { join } from 'node:path'
 import { tmpdir, platform } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import sharp from 'sharp'
-import type { ImageBuffer } from './types'
+import type { ImageBuffer, DisplayInfo } from './types'
 
 export class CaptureService {
-  async captureFullScreen(): Promise<ImageBuffer> {
+  async listDisplays(): Promise<DisplayInfo[]> {
+    const screenshot = (await import('screenshot-desktop')).default
+    const raw: Array<Record<string, unknown>> = await screenshot.listDisplays()
+    return raw.map((d) => ({
+      id: String(d.id ?? d.name ?? ''),
+      name: String(d.name ?? d.id ?? ''),
+      width: Number(d.width ?? 0),
+      height: Number(d.height ?? 0)
+    }))
+  }
+
+  async captureFullScreen(displayId?: string): Promise<ImageBuffer> {
     const buffer = platform() === 'linux'
       ? await this.captureLinux()
-      : await this.captureWithLib()
+      : await this.captureWithLib(displayId)
 
     const metadata = await sharp(buffer).metadata()
     if (!metadata.width || !metadata.height) {
@@ -34,8 +45,12 @@ export class CaptureService {
     }
   }
 
-  private async captureWithLib(): Promise<Buffer> {
+  private async captureWithLib(displayId?: string): Promise<Buffer> {
     const screenshot = (await import('screenshot-desktop')).default
-    return await screenshot({ format: 'png' })
+    const opts: Record<string, unknown> = { format: 'png' }
+    if (displayId) {
+      opts.screen = displayId
+    }
+    return await screenshot(opts)
   }
 }

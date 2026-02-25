@@ -15,3 +15,10 @@ export type CropResult = {
   ocrTooth: ImageBuffer
   ocrExtra: ImageBuffer
 }
+
+export type DisplayInfo = {
+  id: string
+  name: string
+  width: number
+  height: number
+}

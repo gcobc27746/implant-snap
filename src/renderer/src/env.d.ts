@@ -1,6 +1,7 @@
 import type { AppConfig, ValidationResult } from '@shared/config-schema'
 
 type CaptureFullScreenResult = { dataUrl: string; width: number; height: number }
+type DisplayInfo = { id: string; name: string; width: number; height: number }
 
 type OcrResultPayload = {
   raw: { tooth: { text: string; confidence: number }; extra: { text: string; confidence: number } }
@@ -18,11 +19,13 @@ type ImplantSnapApi = {
     reset: () => Promise<AppConfig>
   }
   capture: {
-    fullScreen: () => Promise<CaptureFullScreenResult>
+    listDisplays: () => Promise<DisplayInfo[]>
+    selectDisplay: (displayId: string | null) => Promise<void>
+    fullScreen: (displayId?: string) => Promise<CaptureFullScreenResult>
     onResult: (callback: (result: CaptureFullScreenResult) => void) => () => void
   }
   pipeline: {
-    run: () => Promise<PipelineRunResult>
+    run: (displayId?: string) => Promise<PipelineRunResult>
     onOcrResult: (callback: (result: OcrResultPayload) => void) => () => void
   }
 }

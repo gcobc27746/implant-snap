@@ -2,6 +2,8 @@ import type { AppConfig, RegionKey, RectRegionKey } from '@shared/config-schema'
 import { isRectRegion, RECT_REGION_KEYS } from '@shared/config-schema'
 import { REGION_META } from './constants'
 
+type DisplayInfo = { id: string; name: string; width: number; height: number }
+
 export type PanelEvents = {
   onRegionChange: (config: AppConfig) => void
   onVisibilityToggle: (key: RegionKey, visible: boolean) => void
@@ -20,12 +22,24 @@ export class PropertiesPanel {
     cropMain: true, ocrTooth: true, ocrExtra: true, overlayAnchor: true
   }
   private errorText = ''
+  private displays: DisplayInfo[] = []
+  private selectedDisplayId: string | null = null
 
   init(container: HTMLElement, config: AppConfig, events: PanelEvents): void {
     this.container = container
     this.config = config
     this.events = events
+    this.loadDisplays()
     this.render()
+  }
+
+  private async loadDisplays(): Promise<void> {
+    try {
+      this.displays = await window.implantSnap.capture.listDisplays()
+      this.render()
+    } catch {
+      this.displays = []
+    }
   }
 
   updateConfig(config: AppConfig): void {
@@ -189,6 +203,36 @@ export class PropertiesPanel {
 
   private buildActions(): HTMLElement {
     const wrap = this.el('div', 'space-y-2')
+
+    if (this.displays.length > 1) {
+      const selectWrap = this.el('div', 'space-y-1')
+      const label = this.el('label', 'text-[10px] font-bold text-slate-400 uppercase')
+      label.textContent = '擷取螢幕'
+      selectWrap.appendChild(label)
+
+      const select = document.createElement('select')
+      select.className = 'w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-sm outline-none focus:border-primary'
+
+      const defaultOpt = document.createElement('option')
+      defaultOpt.value = ''
+      defaultOpt.textContent = '自動（主螢幕）'
+      select.appendChild(defaultOpt)
+
+      for (const d of this.displays) {
+        const opt = document.createElement('option')
+        opt.value = d.id
+        opt.textContent = `${d.name} (${d.width}×${d.height})`
+        if (d.id === this.selectedDisplayId) opt.selected = true
+        select.appendChild(opt)
+      }
+
+      select.addEventListener('change', () => {
+        this.selectedDisplayId = select.value || null
+        window.implantSnap.capture.selectDisplay(this.selectedDisplayId)
+      })
+      selectWrap.appendChild(select)
+      wrap.appendChild(selectWrap)
+    }
 
     const captureBtn = this.el('button',
       'w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95'

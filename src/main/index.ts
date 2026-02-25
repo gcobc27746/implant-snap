@@ -14,6 +14,7 @@ const cropService = new CropService()
 const ocrService = new OcrService({ debug: true })
 const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService)
 let mainWindow: BrowserWindow | null = null
+let selectedDisplayId: string | undefined
 
 function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -51,14 +52,8 @@ function showAndFocusConfigWindow(): void {
   mainWindow.focus()
 }
 
-async function captureAndSendToRenderer(): Promise<void> {
-  const { buffer, size } = await captureService.captureFullScreen()
-  const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
-  const result = { dataUrl, width: size.width, height: size.height }
-
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('capture:result', result)
-  }
+function bufferToDataUrl(buffer: Buffer): string {
+  return `data:image/png;base64,${buffer.toString('base64')}`
 }
 
 function registerIpcHandlers(): void {
@@ -67,18 +62,28 @@ function registerIpcHandlers(): void {
   ipcMain.handle('config:validate', (_event, candidate: AppConfig) => configService.validate(candidate))
   ipcMain.handle('config:reset', () => configService.reset())
 
-  ipcMain.handle('capture:fullScreen', async () => {
-    const { buffer, size } = await captureService.captureFullScreen()
-    const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
-    return { dataUrl, width: size.width, height: size.height }
+  ipcMain.handle('capture:listDisplays', () => captureService.listDisplays())
+
+  ipcMain.handle('capture:selectDisplay', (_event, displayId: string | null) => {
+    selectedDisplayId = displayId ?? undefined
   })
 
-  ipcMain.handle('pipeline:run', async () => {
+  ipcMain.handle('capture:fullScreen', async (_event, displayId?: string) => {
+    const id = displayId ?? selectedDisplayId
+    const { buffer, size } = await captureService.captureFullScreen(id)
+    return { dataUrl: bufferToDataUrl(buffer), width: size.width, height: size.height }
+  })
+
+  ipcMain.handle('pipeline:run', async (_event, displayId?: string) => {
+    const id = displayId ?? selectedDisplayId
     const currentConfig = configService.load()
-    const { crops, ocr } = await pipelineRunner.run(currentConfig)
-    const dataUrl = `data:image/png;base64,${crops.cropMain.buffer.toString('base64')}`
+    const { fullScreen, ocr } = await pipelineRunner.run(currentConfig, id)
     return {
-      capture: { dataUrl, width: crops.cropMain.size.width, height: crops.cropMain.size.height },
+      capture: {
+        dataUrl: bufferToDataUrl(fullScreen.buffer),
+        width: fullScreen.size.width,
+        height: fullScreen.size.height
+      },
       ocr
     }
   })
@@ -89,14 +94,13 @@ function registerCaptureShortcut(): void {
   const registered = globalShortcut.register(shortcut, async () => {
     try {
       const currentConfig = configService.load()
-      const { traceId, crops, ocr } = await pipelineRunner.run(currentConfig)
+      const { traceId, fullScreen, ocr } = await pipelineRunner.run(currentConfig, selectedDisplayId)
 
-      const dataUrl = `data:image/png;base64,${crops.cropMain.buffer.toString('base64')}`
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('capture:result', {
-          dataUrl,
-          width: crops.cropMain.size.width,
-          height: crops.cropMain.size.height
+          dataUrl: bufferToDataUrl(fullScreen.buffer),
+          width: fullScreen.size.width,
+          height: fullScreen.size.height
         })
         mainWindow.webContents.send('pipeline:ocrResult', ocr)
       }

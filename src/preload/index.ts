@@ -3,6 +3,7 @@ import type { AppConfig } from '../main/config/schema'
 
 type ValidationResult = { valid: boolean; errors: string[] }
 type CaptureFullScreenResult = { dataUrl: string; width: number; height: number }
+type DisplayInfo = { id: string; name: string; width: number; height: number }
 type OcrResultPayload = {
   raw: { tooth: { text: string; confidence: number }; extra: { text: string; confidence: number } }
   parsed: { tooth: string | null; diameter: string | null; length: string | null }
@@ -19,7 +20,9 @@ const configApi = {
 }
 
 const captureApi = {
-  fullScreen: (): Promise<CaptureFullScreenResult> => ipcRenderer.invoke('capture:fullScreen'),
+  listDisplays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke('capture:listDisplays'),
+  selectDisplay: (displayId: string | null): Promise<void> => ipcRenderer.invoke('capture:selectDisplay', displayId),
+  fullScreen: (displayId?: string): Promise<CaptureFullScreenResult> => ipcRenderer.invoke('capture:fullScreen', displayId),
   onResult: (callback: (result: CaptureFullScreenResult) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, result: CaptureFullScreenResult) => callback(result)
     ipcRenderer.on('capture:result', handler)
@@ -28,7 +31,7 @@ const captureApi = {
 }
 
 const pipelineApi = {
-  run: (): Promise<PipelineRunResult> => ipcRenderer.invoke('pipeline:run'),
+  run: (displayId?: string): Promise<PipelineRunResult> => ipcRenderer.invoke('pipeline:run', displayId),
   onOcrResult: (callback: (result: OcrResultPayload) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, result: OcrResultPayload) => callback(result)
     ipcRenderer.on('pipeline:ocrResult', handler)

@@ -2,11 +2,12 @@ import type { AppConfig } from '../config/schema'
 import type { CaptureService } from '../capture/CaptureService'
 import type { CropService } from '../capture/CropService'
 import type { OcrService } from '../ocr/OcrService'
-import type { CropResult } from '../capture/types'
+import type { CropResult, ImageBuffer } from '../capture/types'
 import type { OcrResult } from '../ocr/types'
 
 export type PipelineResult = {
   traceId: string
+  fullScreen: ImageBuffer
   crops: CropResult
   ocr: OcrResult
 }
@@ -18,12 +19,12 @@ export class CapturePipelineRunner {
     private readonly ocrService: OcrService
   ) {}
 
-  async run(config: AppConfig): Promise<PipelineResult> {
+  async run(config: AppConfig, displayId?: string): Promise<PipelineResult> {
     const traceId = crypto.randomUUID()
     const t0 = Date.now()
     this.log(traceId, '開始執行 capture → crop → ocr 流程')
 
-    const fullScreen = await this.captureService.captureFullScreen()
+    const fullScreen = await this.captureService.captureFullScreen(displayId)
     this.log(traceId, `截圖完成: ${fullScreen.size.width}x${fullScreen.size.height}`)
 
     const crops = await this.cropService.cropAll(fullScreen, {
@@ -44,7 +45,7 @@ export class CapturePipelineRunner {
     }
 
     this.log(traceId, `流程結束 (${Date.now() - t0}ms)`)
-    return { traceId, crops, ocr }
+    return { traceId, fullScreen, crops, ocr }
   }
 
   private log(traceId: string, msg: string): void {
