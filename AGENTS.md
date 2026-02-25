@@ -22,11 +22,13 @@ No ESLint, Prettier, or automated test framework is configured in this project.
 - Use `NO_SANDBOX=1` env var when launching via electron-vite to pass `--no-sandbox` to Chromium (required in containers).
 - DBus errors (`Failed to connect to the bus`) in console are harmless and expected — no system bus is available in containers.
 
-### Known issue: ESM preload in sandbox mode
+### ESM preload requires sandbox: false
 
-The project uses `"type": "module"` in `package.json`, which causes electron-vite v5 to build the preload script as ESM (`.mjs`). Electron's default sandbox mode does not support ESM preload scripts. This results in the renderer showing a blank white page because `window.implantSnap` (provided by the preload) is undefined.
+The project uses `"type": "module"` in `package.json`, causing electron-vite v5 to build preload as ESM (`.mjs`). `sandbox: false` is set in `webPreferences` to support this.
 
-**Workaround**: Add `sandbox: false` to `webPreferences` in `src/main/index.ts`, or change the preload build output to CJS format in `electron.vite.config.ts`. This is a project-level configuration issue, not an environment issue.
+### Screenshot capture on Linux
+
+`screenshot-desktop` uses `scrot` on Linux (configured via `linuxLibrary: 'scrot'` in `CaptureService`). Ensure `scrot` is installed: `sudo apt-get install -y scrot`.
 
 ### Architecture
 
@@ -34,6 +36,15 @@ Standard Electron 3-process layout managed by electron-vite:
 
 | Layer | Entry | Role |
 |---|---|---|
-| Main | `src/main/index.ts` | App lifecycle, tray, IPC, config |
-| Preload | `src/preload/index.ts` | Context bridge (`window.implantSnap.config`) |
-| Renderer | `src/renderer/` | Vanilla TS UI (no React/Vue) |
+| Main | `src/main/index.ts` | App lifecycle, tray, IPC, config, capture pipeline |
+| Preload | `src/preload/index.ts` | Context bridge (`window.implantSnap.config`, `window.implantSnap.capture`) |
+| Renderer | `src/renderer/` | Vanilla TS UI with Konva.js canvas (no React/Vue) |
+| Shared | `src/shared/config-schema.ts` | Types shared between main and renderer (via `@shared` alias) |
+
+### Step 03 renderer modules
+
+The config workbench UI is split into focused modules under `src/renderer/src/config-page/`:
+- `ConfigPage.ts` — lean orchestrator that wires canvas and panel
+- `CanvasManager.ts` — Konva.js stage, ROI shapes, drag/zoom/pan
+- `PropertiesPanel.ts` — dynamic properties form, save/reset actions
+- `constants.ts` — region colors, labels, sizing constants
