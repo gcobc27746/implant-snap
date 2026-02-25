@@ -16,8 +16,7 @@ function createMainWindow(): BrowserWindow {
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
+      nodeIntegration: false
     }
   })
 
