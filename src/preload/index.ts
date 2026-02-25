@@ -13,7 +13,12 @@ const configApi = {
 }
 
 const captureApi = {
-  fullScreen: (): Promise<CaptureFullScreenResult> => ipcRenderer.invoke('capture:fullScreen')
+  fullScreen: (): Promise<CaptureFullScreenResult> => ipcRenderer.invoke('capture:fullScreen'),
+  onResult: (callback: (result: CaptureFullScreenResult) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, result: CaptureFullScreenResult) => callback(result)
+    ipcRenderer.on('capture:result', handler)
+    return () => ipcRenderer.removeListener('capture:result', handler)
+  }
 }
 
 contextBridge.exposeInMainWorld('implantSnap', {

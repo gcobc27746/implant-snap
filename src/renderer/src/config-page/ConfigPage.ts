@@ -101,6 +101,11 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
     }
   }
 
+  window.implantSnap.capture.onResult((result) => {
+    canvas.setBackground(result.dataUrl)
+    statusMsg.textContent = `✓ 快捷鍵擷取完成 (${result.width}×${result.height})`
+  })
+
   statusMsg.textContent = '就緒'
   updateStatusSelection()
 }

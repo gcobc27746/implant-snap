@@ -84,9 +84,10 @@ export class CanvasManager {
         image: img,
         listening: false
       })
+      this.layer.add(this.bgImage)
       this.bgImage.moveToBottom()
       this.bgNode.visible(false)
-      this.layer.draw()
+      this.layer.batchDraw()
     }
     img.src = dataUrl
   }

@@ -49,6 +49,16 @@ function showAndFocusConfigWindow(): void {
   mainWindow.focus()
 }
 
+async function captureAndSendToRenderer(): Promise<void> {
+  const { buffer, size } = await captureService.captureFullScreen()
+  const dataUrl = `data:image/png;base64,${buffer.toString('base64')}`
+  const result = { dataUrl, width: size.width, height: size.height }
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('capture:result', result)
+  }
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('config:load', () => configService.load())
   ipcMain.handle('config:save', (_event, nextConfig: AppConfig) => configService.save(nextConfig))
@@ -66,6 +76,8 @@ function registerCaptureShortcut(): void {
   const shortcut = 'CommandOrControl+Shift+S'
   const registered = globalShortcut.register(shortcut, async () => {
     try {
+      await captureAndSendToRenderer()
+
       const currentConfig = configService.load()
       const { traceId } = await pipelineRunner.run(currentConfig)
       console.log(`[CapturePipeline][${traceId}] 快捷鍵流程執行成功。`)

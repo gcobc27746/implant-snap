@@ -1,5 +1,7 @@
 import type { AppConfig, ValidationResult } from '@shared/config-schema'
 
+type CaptureFullScreenResult = { dataUrl: string; width: number; height: number }
+
 type ImplantSnapApi = {
   config: {
     load: () => Promise<AppConfig>
@@ -8,7 +10,8 @@ type ImplantSnapApi = {
     reset: () => Promise<AppConfig>
   }
   capture: {
-    fullScreen: () => Promise<{ dataUrl: string; width: number; height: number }>
+    fullScreen: () => Promise<CaptureFullScreenResult>
+    onResult: (callback: (result: CaptureFullScreenResult) => void) => () => void
   }
 }
 
