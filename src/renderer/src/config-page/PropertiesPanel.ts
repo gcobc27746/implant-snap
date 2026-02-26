@@ -10,6 +10,7 @@ export type PanelEvents = {
   onSave: () => void
   onReset: () => void
   onCapture: () => void
+  onExecute: () => void
   onRegionSelect: (key: RegionKey) => void
 }
 
@@ -43,7 +44,17 @@ export class PropertiesPanel {
   }
 
   updateConfig(config: AppConfig): void {
+    const shouldRerender =
+      this.config.previewEnabled !== config.previewEnabled ||
+      this.config.sidecarEnabled !== config.sidecarEnabled ||
+      this.config.forceSaveOnParseIncomplete !== config.forceSaveOnParseIncomplete ||
+      this.config.outputDir !== config.outputDir ||
+      this.config.overlayFontSize !== config.overlayFontSize
     this.config = config
+    if (shouldRerender) {
+      this.render()
+      return
+    }
     this.refreshInputs()
   }
 
@@ -234,8 +245,17 @@ export class PropertiesPanel {
       wrap.appendChild(selectWrap)
     }
 
-    const captureBtn = this.el('button',
+    wrap.appendChild(this.buildPipelineSettings())
+
+    const executeBtn = this.el('button',
       'w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95'
+    )
+    executeBtn.innerHTML = '<span class="material-symbols-outlined text-sm">rocket_launch</span>執行完整流程'
+    executeBtn.addEventListener('click', () => this.events.onExecute())
+    wrap.appendChild(executeBtn)
+
+    const captureBtn = this.el('button',
+      'w-full flex items-center justify-center gap-2 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors'
     )
     captureBtn.innerHTML = '<span class="material-symbols-outlined text-sm">screenshot_monitor</span>擷取螢幕樣本'
     captureBtn.addEventListener('click', () => this.events.onCapture())
@@ -256,6 +276,84 @@ export class PropertiesPanel {
     wrap.appendChild(resetBtn)
 
     return wrap
+  }
+
+  private buildPipelineSettings(): HTMLElement {
+    const section = this.el('div', 'space-y-2 rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/40')
+    const title = this.el('p', 'text-[10px] font-bold uppercase tracking-widest text-slate-500')
+    title.textContent = 'Pipeline Settings'
+    section.appendChild(title)
+
+    section.appendChild(
+      this.toggleRow('預覽確認', this.config.previewEnabled, (checked) => {
+        this.applyConfigField('previewEnabled', checked)
+      })
+    )
+    section.appendChild(
+      this.toggleRow('輸出 Sidecar JSON', this.config.sidecarEnabled, (checked) => {
+        this.applyConfigField('sidecarEnabled', checked)
+      })
+    )
+    section.appendChild(
+      this.toggleRow('解析不完整仍儲存', this.config.forceSaveOnParseIncomplete, (checked) => {
+        this.applyConfigField('forceSaveOnParseIncomplete', checked)
+      })
+    )
+    section.appendChild(
+      this.textRow('輸出資料夾', this.config.outputDir, (value) => {
+        this.applyConfigField('outputDir', value.trim())
+      })
+    )
+    section.appendChild(
+      this.textRow('Overlay 字級', String(this.config.overlayFontSize), (value) => {
+        const parsed = Number.parseInt(value, 10)
+        if (Number.isFinite(parsed)) {
+          this.applyConfigField('overlayFontSize', parsed)
+        }
+      })
+    )
+    return section
+  }
+
+  private toggleRow(
+    label: string,
+    checked: boolean,
+    onChange: (checked: boolean) => void
+  ): HTMLElement {
+    const row = this.el('label', 'flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300')
+    row.textContent = label
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.checked = checked
+    input.className = 'h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary'
+    input.addEventListener('change', () => onChange(input.checked))
+    row.appendChild(input)
+    return row
+  }
+
+  private textRow(
+    label: string,
+    value: string,
+    onChange: (next: string) => void
+  ): HTMLElement {
+    const row = this.el('div', 'space-y-1')
+    const title = this.el('label', 'text-[10px] font-bold text-slate-400 uppercase')
+    title.textContent = label
+    row.appendChild(title)
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = value
+    input.className = 'w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-xs outline-none focus:border-primary'
+    input.addEventListener('change', () => onChange(input.value))
+    input.addEventListener('blur', () => onChange(input.value))
+    row.appendChild(input)
+    return row
+  }
+
+  private applyConfigField<K extends keyof AppConfig>(key: K, value: AppConfig[K]): void {
+    const next = { ...this.config, [key]: value }
+    this.config = next
+    this.events.onRegionChange(next)
   }
 
   private refreshInputs(): void {

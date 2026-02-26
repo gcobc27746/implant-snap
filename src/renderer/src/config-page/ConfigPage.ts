@@ -1,5 +1,6 @@
 import type { AppConfig, RegionKey } from '@shared/config-schema'
 import { isRectRegion } from '@shared/config-schema'
+import type { PipelineExecuteResult, PipelineNotice } from '@shared/pipeline-schema'
 import { CanvasManager } from './CanvasManager'
 import { PropertiesPanel } from './PropertiesPanel'
 import { REGION_META } from './constants'
@@ -18,6 +19,8 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
   const statusMsg = root.querySelector<HTMLElement>('#statusMsg')!
   const statusSel = root.querySelector<HTMLElement>('#statusSel')!
   const statusCur = root.querySelector<HTMLElement>('#statusCur')!
+  const toastLayer = root.querySelector<HTMLElement>('#toastLayer')!
+  const ocrResultEl = root.querySelector<HTMLElement>('#ocrResult')!
 
   canvas.init(canvasContainer, config, {
     onRegionChange(next) {
@@ -79,6 +82,15 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
         statusMsg.textContent = `✗ 擷取失敗: ${(err as Error).message}`
       }
     },
+    async onExecute() {
+      try {
+        statusMsg.textContent = '完整流程執行中…'
+        const result = await window.implantSnap.pipeline.execute()
+        applyExecutionResult(result)
+      } catch (err) {
+        statusMsg.textContent = `✗ 執行失敗: ${(err as Error).message}`
+      }
+    },
     onRegionSelect(key) {
       selectedKey = key
       canvas.selectRegion(key)
@@ -102,6 +114,48 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
     }
   }
 
+  function applyExecutionResult(result: PipelineExecuteResult) {
+    config = result.configSnapshot
+    panel.updateConfig(config)
+    updateStatusSelection()
+    if (result.capture) {
+      canvas.setBackground(result.capture.dataUrl)
+    }
+    if (result.ocr) {
+      updateOcrDisplay(result.ocr)
+    }
+
+    if (result.status === 'saved') {
+      statusMsg.textContent = `✓ 已輸出：${result.outputPath ?? '完成'}`
+      if (result.overlayText) {
+        ocrResultEl.innerHTML = `<div class="text-emerald-400 text-xs font-mono font-bold">${result.overlayText}</div>`
+      }
+    } else if (result.status === 'cancelled') {
+      statusMsg.textContent = '⚠ 已取消本次流程'
+    } else {
+      statusMsg.textContent = '⚠ 流程已阻止儲存'
+    }
+  }
+
+  function showNotice(notice: PipelineNotice) {
+    const box = document.createElement('div')
+    const levelClass = {
+      success: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200',
+      warning: 'border-amber-400/40 bg-amber-500/10 text-amber-100',
+      error: 'border-red-400/40 bg-red-500/10 text-red-100'
+    }[notice.level]
+
+    box.className = `max-w-md rounded-lg border px-3 py-2 text-xs shadow-2xl backdrop-blur ${levelClass}`
+    box.textContent = notice.code
+      ? `[${notice.code}] ${notice.message}`
+      : notice.message
+    toastLayer.appendChild(box)
+
+    setTimeout(() => {
+      box.remove()
+    }, 4500)
+  }
+
   window.implantSnap.capture.onResult((result) => {
     canvas.setBackground(result.dataUrl)
     statusMsg.textContent = `✓ 快捷鍵擷取完成 (${result.width}×${result.height})`
@@ -111,7 +165,13 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
     updateOcrDisplay(ocr)
   })
 
-  const ocrResultEl = root.querySelector<HTMLElement>('#ocrResult')!
+  window.implantSnap.pipeline.onNotice((notice) => {
+    showNotice(notice)
+  })
+
+  window.implantSnap.pipeline.onExecuted((result) => {
+    applyExecutionResult(result)
+  })
 
   function updateOcrDisplay(ocr: { parsed: { tooth: string | null; diameter: string | null; length: string | null }; raw: { tooth: { text: string; confidence: number }; extra: { text: string; confidence: number } }; errors: string[] }) {
     const { tooth, diameter, length } = ocr.parsed
@@ -216,5 +276,6 @@ function buildLayout(): string {
       </div>
     </footer>
   </main>
+  <div id="toastLayer" class="pointer-events-none fixed right-4 top-4 z-50 flex w-[24rem] max-w-[90vw] flex-col gap-2"></div>
 </div>`
 }

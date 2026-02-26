@@ -1,4 +1,5 @@
 import type { AppConfig, ValidationResult } from '@shared/config-schema'
+import type { PipelineExecuteResult, PipelineNotice } from '@shared/pipeline-schema'
 
 type CaptureFullScreenResult = { dataUrl: string; width: number; height: number }
 type DisplayInfo = { id: string; name: string; width: number; height: number }
@@ -26,7 +27,10 @@ type ImplantSnapApi = {
   }
   pipeline: {
     run: (displayId?: string) => Promise<PipelineRunResult>
+    execute: (displayId?: string) => Promise<PipelineExecuteResult>
     onOcrResult: (callback: (result: OcrResultPayload) => void) => () => void
+    onNotice: (callback: (notice: PipelineNotice) => void) => () => void
+    onExecuted: (callback: (result: PipelineExecuteResult) => void) => () => void
   }
 }
 

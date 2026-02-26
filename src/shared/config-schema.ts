@@ -14,6 +14,10 @@ export type AppConfig = {
   screenWidth: number
   screenHeight: number
   previewEnabled: boolean
+  outputDir: string
+  sidecarEnabled: boolean
+  forceSaveOnParseIncomplete: boolean
+  overlayFontSize: number
   requiresRegionRedefinition: boolean
   regions: {
     cropMain: RegionRect
@@ -35,6 +39,10 @@ export const DEFAULT_CONFIG: AppConfig = {
   screenWidth: 1920,
   screenHeight: 1080,
   previewEnabled: true,
+  outputDir: 'ScreenshotOutput',
+  sidecarEnabled: true,
+  forceSaveOnParseIncomplete: false,
+  overlayFontSize: 28,
   requiresRegionRedefinition: false,
   regions: {
     cropMain: { x: 720, y: 90, width: 980, height: 920 },

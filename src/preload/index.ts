@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AppConfig } from '../main/config/schema'
+import type { PipelineExecuteResult, PipelineNotice } from '../shared/pipeline-schema'
 
 type ValidationResult = { valid: boolean; errors: string[] }
 type CaptureFullScreenResult = { dataUrl: string; width: number; height: number }
@@ -32,10 +33,21 @@ const captureApi = {
 
 const pipelineApi = {
   run: (displayId?: string): Promise<PipelineRunResult> => ipcRenderer.invoke('pipeline:run', displayId),
+  execute: (displayId?: string): Promise<PipelineExecuteResult> => ipcRenderer.invoke('pipeline:execute', displayId),
   onOcrResult: (callback: (result: OcrResultPayload) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, result: OcrResultPayload) => callback(result)
     ipcRenderer.on('pipeline:ocrResult', handler)
     return () => ipcRenderer.removeListener('pipeline:ocrResult', handler)
+  },
+  onNotice: (callback: (notice: PipelineNotice) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, notice: PipelineNotice) => callback(notice)
+    ipcRenderer.on('pipeline:notice', handler)
+    return () => ipcRenderer.removeListener('pipeline:notice', handler)
+  },
+  onExecuted: (callback: (result: PipelineExecuteResult) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, result: PipelineExecuteResult) => callback(result)
+    ipcRenderer.on('pipeline:executed', handler)
+    return () => ipcRenderer.removeListener('pipeline:executed', handler)
   }
 }
 

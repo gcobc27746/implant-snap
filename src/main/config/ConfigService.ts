@@ -1,5 +1,7 @@
 import Store from 'electron-store'
 import { screen } from 'electron'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import {
   CONFIG_SCHEMA,
   DEFAULT_CONFIG,
@@ -15,11 +17,16 @@ type ValidationResult = {
 
 export class ConfigService {
   private readonly store: Store<AppConfig>
+  private readonly defaults: AppConfig
 
   constructor() {
+    this.defaults = {
+      ...DEFAULT_CONFIG,
+      outputDir: this.getDefaultOutputDir()
+    }
     this.store = new Store<AppConfig>({
       name: 'implant-snap-config',
-      defaults: DEFAULT_CONFIG,
+      defaults: this.defaults,
       schema: CONFIG_SCHEMA
     })
   }
@@ -45,8 +52,10 @@ export class ConfigService {
 
   save(nextConfig: AppConfig): AppConfig {
     const currentScreen = this.getCurrentScreenSize()
+    const outputDir = nextConfig.outputDir.trim()
     const normalizedConfig: AppConfig = {
       ...nextConfig,
+      outputDir: outputDir.length > 0 ? outputDir : this.defaults.outputDir,
       screenWidth: currentScreen.width,
       screenHeight: currentScreen.height
     }
@@ -62,10 +71,16 @@ export class ConfigService {
 
   validate(config: AppConfig): ValidationResult {
     const errors: string[] = []
-    const { screenWidth, screenHeight, regions } = config
+    const { screenWidth, screenHeight, regions, outputDir, overlayFontSize } = config
 
     if (!this.isPositiveInteger(screenWidth) || !this.isPositiveInteger(screenHeight)) {
       errors.push('screenWidth 與 screenHeight 必須為正整數。')
+    }
+    if (!outputDir.trim()) {
+      errors.push('outputDir 不能為空白。')
+    }
+    if (!Number.isFinite(overlayFontSize) || overlayFontSize < 12 || overlayFontSize > 72) {
+      errors.push('overlayFontSize 需介於 12 到 72。')
     }
 
     this.validateRect('regions.cropMain', regions.cropMain, screenWidth, screenHeight, errors)
@@ -82,7 +97,7 @@ export class ConfigService {
   reset(): AppConfig {
     const currentScreen = this.getCurrentScreenSize()
     const resetConfig: AppConfig = {
-      ...DEFAULT_CONFIG,
+      ...this.defaults,
       screenWidth: currentScreen.width,
       screenHeight: currentScreen.height,
       requiresRegionRedefinition: false
@@ -94,13 +109,17 @@ export class ConfigService {
 
   private withDefaults(partialConfig: Partial<AppConfig>): AppConfig {
     return {
-      ...DEFAULT_CONFIG,
+      ...this.defaults,
       ...partialConfig,
       regions: {
-        ...DEFAULT_CONFIG.regions,
+        ...this.defaults.regions,
         ...partialConfig.regions
       }
     }
+  }
+
+  private getDefaultOutputDir(): string {
+    return join(homedir(), 'Desktop', 'ScreenshotOutput')
   }
 
   private getCurrentScreenSize(): { width: number; height: number } {

@@ -7,75 +7,36 @@ import { CaptureService } from './capture/CaptureService'
 import { CropService } from './capture/CropService'
 import { OcrService } from './ocr/OcrService'
 import { CapturePipelineRunner } from './pipeline/CapturePipelineRunner'
+import { OverlayService } from './overlay/OverlayService'
+import { PreviewService } from './preview/PreviewService'
+import { OutputService } from './output/OutputService'
+import { ExecutionPipelineService } from './pipeline/ExecutionPipelineService'
+import { UpdateService } from './update/UpdateService'
+import type { PipelineExecuteResult, PipelineNotice } from '../shared/pipeline-schema'
 
 const configService = new ConfigService()
 const captureService = new CaptureService()
 const cropService = new CropService()
+const ocrService = new OcrService({ debug: false })
+const overlayService = new OverlayService()
+const previewService = new PreviewService()
+const outputService = new OutputService()
+const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService)
+const executionPipelineService = new ExecutionPipelineService(
+  pipelineRunner,
+  overlayService,
+  previewService,
+  outputService,
+  (nextConfig) => configService.save(nextConfig)
+)
+const updateService = new UpdateService()
+
+let mainWindow: BrowserWindow | null = null
+let selectedDisplayId: string | undefined
 
 function bufferToDataUrl(buffer: Buffer): string {
   return `data:image/png;base64,${buffer.toString('base64')}`
 }
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-const PREPROCESSED_LABELS: Record<string, string> = {
-  ocrTooth: 'OCR 牙位 (預處理後)',
-  ocrExtra: 'OCR 附加資訊 (預處理後)'
-}
-
-function showPreprocessedImagePopup(label: string, buffer: Buffer): void {
-  const title = PREPROCESSED_LABELS[label] ?? `${label} (預處理後)`
-  const dataUrl = bufferToDataUrl(buffer)
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      min-width: 200px; min-height: 120px;
-      padding: 12px; background: #1e293b;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-family: system-ui, sans-serif; color: #e2e8f0;
-    }
-    h2 { font-size: 14px; margin-bottom: 8px; color: #94a3b8; }
-    img { max-width: 100%; max-height: 85vh; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
-  </style>
-</head>
-<body>
-  <h2>${escapeHtml(title)}</h2>
-  <img src="${dataUrl}" alt="預處理預覽" />
-</body>
-</html>`
-  const win = new BrowserWindow({
-    width: 420,
-    height: 360,
-    title,
-    autoHideMenuBar: true,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  })
-  win.setMenuBarVisibility(false)
-  win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
-}
-
-const ocrService = new OcrService({
-  debug: true
-})
-const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService)
-let mainWindow: BrowserWindow | null = null
-let selectedDisplayId: string | undefined
 
 function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -144,6 +105,15 @@ function registerIpcHandlers(): void {
       ocr
     }
   })
+
+  ipcMain.handle('pipeline:execute', async (_event, displayId?: string) => {
+    const id = displayId ?? selectedDisplayId
+    const currentConfig = configService.load()
+    const previewParent = mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() ? mainWindow : null
+    const result = await executionPipelineService.execute(currentConfig, previewParent, id)
+    emitPipelineNotices(result.notices)
+    return result
+  })
 }
 
 function registerCaptureShortcut(): void {
@@ -151,24 +121,32 @@ function registerCaptureShortcut(): void {
   const registered = globalShortcut.register(shortcut, async () => {
     try {
       const currentConfig = configService.load()
-      const { traceId, fullScreen, ocr } = await pipelineRunner.run(currentConfig, selectedDisplayId)
-
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('capture:result', {
-          dataUrl: bufferToDataUrl(fullScreen.buffer),
-          width: fullScreen.size.width,
-          height: fullScreen.size.height
-        })
-        mainWindow.webContents.send('pipeline:ocrResult', ocr)
-      }
-
-      console.log(`[CapturePipeline][${traceId}] 快捷鍵流程執行成功。`)
+      const previewParent = mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() ? mainWindow : null
+      const result = await executionPipelineService.execute(currentConfig, previewParent, selectedDisplayId)
+      emitPipelineNotices(result.notices)
+      emitPipelineExecution(result)
+      console.log(`[CapturePipeline][${result.traceId}] 快捷鍵流程狀態: ${result.status}`)
     } catch (error) {
       console.error(`[CapturePipeline] 快捷鍵流程失敗: ${(error as Error).message}`)
     }
   })
   if (!registered) {
     console.error(`[CapturePipeline] 無法註冊全域快捷鍵: ${shortcut}`)
+  }
+}
+
+function emitPipelineExecution(result: PipelineExecuteResult): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('pipeline:executed', result)
+}
+
+function emitPipelineNotices(notices: PipelineNotice[]): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  for (const notice of notices) {
+    const codePart = notice.code ? `[${notice.code}]` : ''
+    const tracePart = notice.traceId ? `[${notice.traceId}]` : ''
+    console.log(`[PipelineNotice]${tracePart}${codePart}[${notice.level}] ${notice.message}`)
+    mainWindow.webContents.send('pipeline:notice', notice)
   }
 }
 
@@ -182,10 +160,14 @@ app.whenReady().then(() => {
   configService.load()
   registerIpcHandlers()
   registerCaptureShortcut()
+  updateService.initialize()
 })
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  ocrService.destroy().catch((error) => {
+    console.error(`[OcrService] worker 釋放失敗: ${error.message}`)
+  })
 })
 
 app.on('window-all-closed', () => {
