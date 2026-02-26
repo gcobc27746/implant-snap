@@ -1,19 +1,27 @@
-import { createWorker, Worker } from 'tesseract.js'
+import { createWorker, Worker, PSM } from 'tesseract.js'
 import { OcrPreprocessor } from './OcrPreprocessor'
 import { OcrParser } from './OcrParser'
 import type { OcrResult, OcrRawOutput, PreprocessOptions } from './types'
 
 const OCR_TIMEOUT_MS = 15_000
 
+export type OnPreprocessedCallback = (label: string, buffer: Buffer) => void
+
 export class OcrService {
   private preprocessor: OcrPreprocessor
   private parser = new OcrParser()
   private worker: Worker | null = null
   private debug: boolean
+  private onPreprocessed?: OnPreprocessedCallback
 
-  constructor(opts?: { preprocess?: Partial<PreprocessOptions>; debug?: boolean }) {
+  constructor(opts?: {
+    preprocess?: Partial<PreprocessOptions>
+    debug?: boolean
+    onPreprocessed?: OnPreprocessedCallback
+  }) {
     this.preprocessor = new OcrPreprocessor(opts?.preprocess)
     this.debug = opts?.debug ?? false
+    this.onPreprocessed = opts?.onPreprocessed
   }
 
   async recognize(toothBuffer: Buffer, extraBuffer: Buffer): Promise<OcrResult> {
@@ -51,7 +59,7 @@ export class OcrService {
 
   private async getWorker(): Promise<Worker> {
     if (!this.worker) {
-      this.worker = await createWorker('eng', undefined, {
+      this.worker = await createWorker(['chi_sim'], undefined, {
         logger: this.debug ? (m: unknown) => console.log('[tesseract]', m) : undefined
       } as Record<string, unknown>)
     }
@@ -60,7 +68,11 @@ export class OcrService {
 
   private async recognizeOne(worker: Worker, imageBuffer: Buffer, label: string): Promise<OcrRawOutput> {
     try {
+      const psm = label === 'ocrTooth' ? PSM.SINGLE_LINE : PSM.SINGLE_BLOCK
+      await worker.setParameters({ tessedit_pageseg_mode: psm })
+
       const preprocessed = await this.preprocessor.process(imageBuffer)
+      this.onPreprocessed?.(label, preprocessed)
 
       const result = await this.withTimeout(
         worker.recognize(preprocessed),

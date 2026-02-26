@@ -20,6 +20,10 @@ export class OcrPreprocessor {
       pipeline = pipeline.linear(this.opts.contrast, -(128 * this.opts.contrast - 128))
     }
 
+    if (this.opts.sharpen) {
+      pipeline = pipeline.sharpen({ sigma: 1.5 })
+    }
+
     if (this.opts.scale !== 1) {
       const meta = await sharp(imageBuffer).metadata()
       if (meta.width && meta.height) {
@@ -31,7 +35,9 @@ export class OcrPreprocessor {
       }
     }
 
-    pipeline = pipeline.threshold(this.opts.threshold)
+    if (this.opts.threshold > 0) {
+      pipeline = pipeline.threshold(this.opts.threshold)
+    }
 
     return pipeline.png().toBuffer()
   }

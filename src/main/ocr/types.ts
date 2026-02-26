@@ -23,11 +23,13 @@ export type PreprocessOptions = {
   contrast: number
   scale: number
   threshold: number
+  sharpen: boolean
 }
 
 export const DEFAULT_PREPROCESS: PreprocessOptions = {
   grayscale: true,
-  contrast: 1.5,
-  scale: 2,
-  threshold: 128
+  contrast: 1.0,
+  scale: 3.0,
+  threshold: 0,
+  sharpen: true
 }

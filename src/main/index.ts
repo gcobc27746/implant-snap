@@ -11,7 +11,68 @@ import { CapturePipelineRunner } from './pipeline/CapturePipelineRunner'
 const configService = new ConfigService()
 const captureService = new CaptureService()
 const cropService = new CropService()
-const ocrService = new OcrService({ debug: true })
+
+function bufferToDataUrl(buffer: Buffer): string {
+  return `data:image/png;base64,${buffer.toString('base64')}`
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+const PREPROCESSED_LABELS: Record<string, string> = {
+  ocrTooth: 'OCR 牙位 (預處理後)',
+  ocrExtra: 'OCR 附加資訊 (預處理後)'
+}
+
+function showPreprocessedImagePopup(label: string, buffer: Buffer): void {
+  const title = PREPROCESSED_LABELS[label] ?? `${label} (預處理後)`
+  const dataUrl = bufferToDataUrl(buffer)
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-width: 200px; min-height: 120px;
+      padding: 12px; background: #1e293b;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: system-ui, sans-serif; color: #e2e8f0;
+    }
+    h2 { font-size: 14px; margin-bottom: 8px; color: #94a3b8; }
+    img { max-width: 100%; max-height: 85vh; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
+  </style>
+</head>
+<body>
+  <h2>${escapeHtml(title)}</h2>
+  <img src="${dataUrl}" alt="預處理預覽" />
+</body>
+</html>`
+  const win = new BrowserWindow({
+    width: 420,
+    height: 360,
+    title,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+  win.setMenuBarVisibility(false)
+  win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+}
+
+const ocrService = new OcrService({
+  debug: true
+})
 const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService)
 let mainWindow: BrowserWindow | null = null
 let selectedDisplayId: string | undefined
@@ -50,10 +111,6 @@ function showAndFocusConfigWindow(): void {
   if (mainWindow.isMinimized()) mainWindow.restore()
   if (!mainWindow.isVisible()) mainWindow.show()
   mainWindow.focus()
-}
-
-function bufferToDataUrl(buffer: Buffer): string {
-  return `data:image/png;base64,${buffer.toString('base64')}`
 }
 
 function registerIpcHandlers(): void {
