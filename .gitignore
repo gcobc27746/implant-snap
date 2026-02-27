@@ -1,5 +1,34 @@
+# Dependencies
 node_modules/
+
+# Build output
 out/
 dist/
+
+# Logs
 *.log
+npm-debug.log*
+
+# Tesseract language data (auto-downloaded at runtime)
 *.traineddata
+
+# Electron builder artifacts
+release/
+build/
+
+# Environment & local config
+.env
+.env.*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Claude Code local settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
