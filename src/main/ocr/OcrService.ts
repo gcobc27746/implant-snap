@@ -59,9 +59,10 @@ export class OcrService {
 
   private async getWorker(): Promise<Worker> {
     if (!this.worker) {
-      this.worker = await createWorker(['chi_sim'], undefined, {
-        logger: this.debug ? (m: unknown) => console.log('[tesseract]', m) : undefined
-      } as Record<string, unknown>)
+      const workerOptions = this.debug
+        ? { logger: (m: unknown) => console.log('[tesseract]', m) }
+        : {}
+      this.worker = await createWorker(['chi_sim'], undefined, workerOptions as Record<string, unknown>)
     }
     return this.worker
   }

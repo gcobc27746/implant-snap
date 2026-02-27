@@ -15,7 +15,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.ts')
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          preview: resolve(__dirname, 'src/preload/preview.ts')
         }
       }
     }
@@ -25,6 +26,14 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve(__dirname, 'src/shared')
+      }
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'src/renderer/index.html'),
+          preview: resolve(__dirname, 'src/renderer/preview.html')
+        }
       }
     }
   }

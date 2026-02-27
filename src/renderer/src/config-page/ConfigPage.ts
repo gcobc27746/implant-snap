@@ -141,6 +141,78 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
 
   statusMsg.textContent = '就緒'
   updateStatusSelection()
+
+  // ── Tab switching ───────────────────────────────────────────────────────
+  const navCapture = root.querySelector<HTMLAnchorElement>('#navCapture')!
+  const navSettings = root.querySelector<HTMLAnchorElement>('#navSettings')!
+  const captureView = root.querySelector<HTMLElement>('#captureView')!
+  const settingsView = root.querySelector<HTMLElement>('#settingsView')!
+  const headerTitle = root.querySelector<HTMLElement>('#headerTitle')!
+
+  const ACTIVE_NAV = 'bg-primary/10 text-primary'
+  const INACTIVE_NAV = 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+
+  function switchTab(tab: 'capture' | 'settings'): void {
+    if (tab === 'capture') {
+      captureView.style.display = ''
+      settingsView.style.display = 'none'
+      navCapture.className = `flex items-center gap-3 px-3 py-2 rounded-lg ${ACTIVE_NAV}`
+      navSettings.className = `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${INACTIVE_NAV}`
+      headerTitle.textContent = 'Region Configuration'
+    } else {
+      captureView.style.display = 'none'
+      settingsView.style.display = ''
+      navCapture.className = `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${INACTIVE_NAV}`
+      navSettings.className = `flex items-center gap-3 px-3 py-2 rounded-lg ${ACTIVE_NAV}`
+      headerTitle.textContent = 'Settings'
+      loadSettingsView()
+    }
+  }
+
+  navCapture.addEventListener('click', (e) => { e.preventDefault(); switchTab('capture') })
+  navSettings.addEventListener('click', (e) => { e.preventDefault(); switchTab('settings') })
+
+  // ── Settings panel ──────────────────────────────────────────────────────
+  function loadSettingsView(): void {
+    const cfg = config
+    const outputDirInput = root.querySelector<HTMLInputElement>('#settingOutputDir')!
+    const sidecarToggle = root.querySelector<HTMLInputElement>('#settingSidecar')!
+    const previewToggle = root.querySelector<HTMLInputElement>('#settingPreview')!
+
+    outputDirInput.value = cfg.outputDir ?? ''
+    sidecarToggle.checked = cfg.sidecarEnabled ?? false
+    previewToggle.checked = cfg.previewEnabled ?? true
+  }
+
+  root.querySelector('#btnBrowseOutputDir')?.addEventListener('click', async () => {
+    const selected = await window.implantSnap.dialog.selectOutputDir()
+    if (selected) {
+      const input = root.querySelector<HTMLInputElement>('#settingOutputDir')!
+      input.value = selected
+    }
+  })
+
+  root.querySelector('#btnSaveSettings')?.addEventListener('click', async () => {
+    const outputDirInput = root.querySelector<HTMLInputElement>('#settingOutputDir')!
+    const sidecarToggle = root.querySelector<HTMLInputElement>('#settingSidecar')!
+    const previewToggle = root.querySelector<HTMLInputElement>('#settingPreview')!
+    const settingsMsg = root.querySelector<HTMLElement>('#settingsMsg')!
+
+    try {
+      const updated: typeof config = {
+        ...config,
+        outputDir: outputDirInput.value.trim(),
+        sidecarEnabled: sidecarToggle.checked,
+        previewEnabled: previewToggle.checked
+      }
+      config = await window.implantSnap.config.save(updated)
+      settingsMsg.textContent = '✓ 設定已儲存'
+      settingsMsg.className = 'text-emerald-500 text-sm font-semibold'
+    } catch (err) {
+      settingsMsg.textContent = `✗ 儲存失敗: ${(err as Error).message}`
+      settingsMsg.className = 'text-red-400 text-sm font-semibold'
+    }
+  })
 }
 
 function buildLayout(): string {
@@ -158,11 +230,11 @@ function buildLayout(): string {
       </div>
     </div>
     <nav class="flex-1 px-3 space-y-1">
-      <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+      <a id="navCapture" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
         <span class="material-symbols-outlined">crop_free</span>
         <span class="text-sm font-medium">Capture Config</span>
       </a>
-      <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+      <a id="navSettings" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
         <span class="material-symbols-outlined">settings</span>
         <span class="text-sm font-medium">Settings</span>
       </a>
@@ -187,12 +259,12 @@ function buildLayout(): string {
     <header class="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 bg-white/80 dark:bg-bg-dark/80 backdrop-blur-md shrink-0">
       <h2 class="text-sm font-bold flex items-center gap-2">
         <span class="text-primary material-symbols-outlined text-lg">layers</span>
-        Region Configuration
+        <span id="headerTitle">Region Configuration</span>
       </h2>
     </header>
 
-    <!-- Canvas + Panel -->
-    <div class="flex-1 flex overflow-hidden">
+    <!-- Capture Config view -->
+    <div id="captureView" class="flex-1 flex overflow-hidden">
       <div id="canvasContainer" class="flex-1 relative overflow-hidden bg-slate-900/5 dark:bg-slate-900"></div>
       <aside class="w-72 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark/50 overflow-y-auto shrink-0">
         <div id="panelContainer" class="p-5 space-y-4"></div>
@@ -201,6 +273,76 @@ function buildLayout(): string {
           <div id="ocrResult" class="text-slate-400 text-[11px]">尚未執行 OCR</div>
         </div>
       </aside>
+    </div>
+
+    <!-- Settings view -->
+    <div id="settingsView" style="display:none" class="flex-1 overflow-y-auto p-8">
+      <div class="max-w-xl space-y-8">
+
+        <!-- Output directory -->
+        <section class="space-y-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-base">folder_open</span>
+            輸出目錄
+          </h3>
+          <div class="flex gap-2">
+            <input id="settingOutputDir" type="text" placeholder="（預設：桌面 ScreenshotOutput）"
+              class="flex-1 bg-slate-50 dark:bg-[#1c2631] border border-slate-200 dark:border-slate-700 rounded-lg h-10 px-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 dark:text-white outline-none transition-all" />
+            <button id="btnBrowseOutputDir"
+              class="px-4 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 shrink-0">
+              <span class="material-symbols-outlined text-base">folder</span>
+              選擇
+            </button>
+          </div>
+          <p class="text-xs text-slate-500">若留空則儲存至桌面的 ScreenshotOutput 資料夾。</p>
+        </section>
+
+        <div class="h-px bg-slate-200 dark:bg-slate-800"></div>
+
+        <!-- Toggles -->
+        <section class="space-y-5">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-base">tune</span>
+            行為設定
+          </h3>
+
+          <label class="flex items-start gap-4 cursor-pointer group">
+            <div class="mt-0.5 shrink-0">
+              <input id="settingPreview" type="checkbox" class="peer hidden" />
+              <div class="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                <span class="material-symbols-outlined text-white text-[15px] hidden peer-checked:flex">check</span>
+              </div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">顯示預覽視窗</p>
+              <p class="text-xs text-slate-500 mt-0.5">每次執行快捷鍵後先開啟確認視窗，可手動修正資料再儲存。</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-4 cursor-pointer group">
+            <div class="mt-0.5 shrink-0">
+              <input id="settingSidecar" type="checkbox" class="peer hidden" />
+              <div class="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                <span class="material-symbols-outlined text-white text-[15px] hidden peer-checked:flex">check</span>
+              </div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">輸出 Sidecar JSON</p>
+              <p class="text-xs text-slate-500 mt-0.5">在圖片旁同時儲存一份包含解析資料的 .json 檔。</p>
+            </div>
+          </label>
+        </section>
+
+        <div class="flex items-center gap-4">
+          <button id="btnSaveSettings"
+            class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95">
+            <span class="material-symbols-outlined text-base">save</span>
+            儲存設定
+          </button>
+          <span id="settingsMsg" class="text-sm font-semibold"></span>
+        </div>
+
+      </div>
     </div>
 
     <!-- Status Bar -->

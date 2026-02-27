@@ -18,8 +18,12 @@ const DIAMETER_RE = /直\s*[径經徑人]?\s*[径經徑笃]?\s*=\s*(\d+\.?\d*)\s
 /**
  * Positional fallback: find ALL "= NUMBER mm" patterns in text.
  * In the standard implant data format, the first is length, second is diameter.
+ *
+ * Also tolerates OCR misreads where the digit "4" is rendered as "<", "{", or "("
+ * (e.g. "= 4.0 mm" → "=<0 mm"). These are captured as group 1 (the noise char)
+ * and group 2 (the remaining digits).
  */
-const VALUE_MM_RE = /=\s*(\d+\.?\d*)\s*m/gi
+const VALUE_MM_RE = /=\s*([<{(]?)(\d+\.?\d*)\s*m/gi
 
 /** Fallback: old "DxL" format (e.g. "4.0×13.0") */
 const DIM_RE = /(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+(?:\.\d+)?)/
@@ -80,12 +84,18 @@ export class OcrParser {
 
     // Strategy 2: Positional fallback — find all "= NUMBER mm" patterns.
     // In standard format, length comes before diameter.
+    // The regex allows an optional leading "<", "{", "(" which OCR sometimes
+    // produces instead of the digit "4" (e.g. "=<0 mm" → treat as "=40 mm").
     if (!length || !diameter) {
       const allValues: string[] = []
       let m: RegExpExecArray | null
       const re = new RegExp(VALUE_MM_RE.source, VALUE_MM_RE.flags)
       while ((m = re.exec(extraText)) !== null) {
-        allValues.push(m[1])
+        const noiseChar = m[1]  // "<", "{", "(" or ""
+        const digits = m[2]
+        // If a noise char precedes the digits, it is most likely a garbled "4"
+        const raw = noiseChar ? `4${digits}` : digits
+        allValues.push(raw)
       }
 
       if (allValues.length >= 2) {

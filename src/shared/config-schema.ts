@@ -15,6 +15,8 @@ export type AppConfig = {
   screenHeight: number
   previewEnabled: boolean
   requiresRegionRedefinition: boolean
+  outputDir: string
+  sidecarEnabled: boolean
   regions: {
     cropMain: RegionRect
     ocrTooth: RegionRect
@@ -36,6 +38,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   screenHeight: 1080,
   previewEnabled: true,
   requiresRegionRedefinition: false,
+  outputDir: '',
+  sidecarEnabled: false,
   regions: {
     cropMain: { x: 720, y: 90, width: 980, height: 920 },
     ocrTooth: { x: 1080, y: 120, width: 160, height: 90 },

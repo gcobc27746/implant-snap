@@ -28,6 +28,9 @@ type ImplantSnapApi = {
     run: (displayId?: string) => Promise<PipelineRunResult>
     onOcrResult: (callback: (result: OcrResultPayload) => void) => () => void
   }
+  dialog: {
+    selectOutputDir: () => Promise<string | null>
+  }
 }
 
 declare global {

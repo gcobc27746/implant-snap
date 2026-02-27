@@ -11,6 +11,10 @@ type OcrResultPayload = {
 }
 type PipelineRunResult = { capture: CaptureFullScreenResult; ocr: OcrResultPayload }
 
+const dialogApi = {
+  selectOutputDir: (): Promise<string | null> => ipcRenderer.invoke('dialog:selectOutputDir')
+}
+
 const configApi = {
   load: (): Promise<AppConfig> => ipcRenderer.invoke('config:load'),
   save: (nextConfig: AppConfig): Promise<AppConfig> => ipcRenderer.invoke('config:save', nextConfig),
@@ -42,5 +46,6 @@ const pipelineApi = {
 contextBridge.exposeInMainWorld('implantSnap', {
   config: configApi,
   capture: captureApi,
-  pipeline: pipelineApi
+  pipeline: pipelineApi,
+  dialog: dialogApi
 })

@@ -16,6 +16,8 @@ export const CONFIG_SCHEMA: Schema<AppConfig> = {
   screenHeight: { type: 'number', minimum: 1 },
   previewEnabled: { type: 'boolean', default: true },
   requiresRegionRedefinition: { type: 'boolean', default: false },
+  outputDir: { type: 'string', default: '' },
+  sidecarEnabled: { type: 'boolean', default: false },
   regions: {
     type: 'object',
     properties: {
