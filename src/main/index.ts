@@ -60,11 +60,16 @@ let mainWindow: BrowserWindow | null = null
 let selectedDisplayId: string | undefined
 
 function createMainWindow(): BrowserWindow {
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, 'icon.png')
+    : join(__dirname, '../../resources/icon.png')
+
   const window = new BrowserWindow({
     width: 1280,
     height: 800,
     show: false,
     autoHideMenuBar: true,
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -142,12 +147,38 @@ function registerIpcHandlers(): void {
 
 // ── Full pipeline: capture → crop → OCR → overlay → preview → save ──────────
 
+/** Hide the config window, wait for it to disappear, then restore it after fn(). */
+async function withWindowHidden<T>(fn: () => Promise<T>): Promise<T> {
+  const win = mainWindow
+  const wasVisible = win && !win.isDestroyed() && win.isVisible()
+
+  if (wasVisible) {
+    await new Promise<void>((resolve) => {
+      win!.once('hide', resolve)
+      win!.hide()
+    })
+    // Extra buffer for OS compositor to finish removing the window from screen
+    await new Promise((r) => setTimeout(r, 150))
+  }
+
+  try {
+    return await fn()
+  } finally {
+    if (wasVisible && win && !win.isDestroyed()) {
+      win.show()
+    }
+  }
+}
+
 async function runFullPipeline(traceId: string): Promise<void> {
   const currentConfig = configService.load()
 
   // 1. Capture + Crop + OCR
-  log(traceId, 'pipeline', '開始截圖 → 裁切 → OCR 流程')
-  const { fullScreen, crops, ocr } = await pipelineRunner.run(currentConfig, selectedDisplayId)
+  // Hide the config window first so it doesn't appear in the screenshot.
+  log(traceId, 'pipeline', '隱藏視窗 → 截圖 → 裁切 → OCR 流程')
+  const { fullScreen, crops, ocr } = await withWindowHidden(() =>
+    pipelineRunner.run(currentConfig, selectedDisplayId)
+  )
   log(traceId, 'ocr', `tooth="${ocr.parsed.tooth ?? '?'}" d="${ocr.parsed.diameter ?? '?'}" l="${ocr.parsed.length ?? '?'}"`)
 
   // Propagate capture result to config window (for canvas preview)
@@ -182,7 +213,12 @@ async function runFullPipeline(traceId: string): Promise<void> {
 
   if (reloadedConfig.previewEnabled) {
     log(traceId, 'preview', 'opening preview window')
-    const result = await previewService.showAndWait(overlayedBuffer, ocr.parsed)
+    const result = await previewService.showAndWait(
+      overlayedBuffer,
+      ocr.parsed,
+      crops.ocrTooth.buffer,
+      crops.ocrExtra.buffer
+    )
 
     if (!result.confirmed) {
       log(traceId, 'preview', 'user cancelled — aborting')
@@ -276,7 +312,18 @@ function registerCaptureShortcut(): void {
 app.whenReady().then(() => {
   mainWindow = createMainWindow()
 
-  const lifecycleService = new AppLifecycleService(showAndFocusConfigWindow)
+  const lifecycleService = new AppLifecycleService(showAndFocusConfigWindow, () => {
+    const traceId = crypto.randomUUID().slice(0, 8)
+    runFullPipeline(traceId).catch((error) => {
+      const appErr = error instanceof AppError ? error : null
+      const code = appErr?.code ?? 'UNKNOWN'
+      const message = appErr
+        ? ERROR_MESSAGES[appErr.code] ?? appErr.message
+        : (error as Error).message
+      console.error(`[Pipeline][${traceId}][ERROR] ${code}: ${message}`, error)
+      notifyError(message)
+    })
+  })
   lifecycleService.attachWindowCloseBehavior(mainWindow)
   lifecycleService.initializeTray()
 

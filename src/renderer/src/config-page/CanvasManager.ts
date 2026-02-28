@@ -27,6 +27,7 @@ export class CanvasManager {
   private labels: Partial<Record<RectRegionKey, Konva.Label>> = {}
   private config!: AppConfig
   private events!: CanvasEvents
+  private resizeObserver!: ResizeObserver
 
   init(container: HTMLDivElement, config: AppConfig, events: CanvasEvents): void {
     this.config = config
@@ -69,6 +70,12 @@ export class CanvasManager {
     this.setupStageEvents()
     this.fitToContainer(container)
     this.layer.draw()
+
+    this.resizeObserver = new ResizeObserver(() => {
+      this.fitToContainer(container)
+      this.layer.batchDraw()
+    })
+    this.resizeObserver.observe(container)
   }
 
   setBackground(dataUrl: string): void {
@@ -137,6 +144,7 @@ export class CanvasManager {
   }
 
   destroy(): void {
+    this.resizeObserver.disconnect()
     this.stage.destroy()
   }
 

@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
 import type { ParsedData } from '../ocr/types'
 
@@ -11,8 +11,17 @@ export class PreviewService {
    * Open the preview window and wait for the user to confirm or cancel.
    * Returns a PreviewResult that the caller uses to decide whether to save.
    */
-  showAndWait(imageBuffer: Buffer, data: ParsedData): Promise<PreviewResult> {
+  showAndWait(
+    imageBuffer: Buffer,
+    data: ParsedData,
+    toothCropBuffer?: Buffer,
+    extraCropBuffer?: Buffer
+  ): Promise<PreviewResult> {
     return new Promise<PreviewResult>((resolve) => {
+      const iconPath = app.isPackaged
+        ? join(process.resourcesPath, 'icon.png')
+        : join(__dirname, '../../resources/icon.png')
+
       const win = new BrowserWindow({
         width: 1100,
         height: 760,
@@ -21,6 +30,7 @@ export class PreviewService {
         title: 'Preview & Confirm — ImplantSnap',
         autoHideMenuBar: true,
         show: false,
+        icon: iconPath,
         webPreferences: {
           // __dirname resolves to out/main/ in the bundled output,
           // so the preload is at out/preload/preview.mjs
@@ -88,6 +98,12 @@ export class PreviewService {
         ipcMain.off('preview:ready', readyHandler)
         win.webContents.send('preview:init', {
           imageDataUrl: `data:image/png;base64,${imageBuffer.toString('base64')}`,
+          toothCropDataUrl: toothCropBuffer
+            ? `data:image/png;base64,${toothCropBuffer.toString('base64')}`
+            : null,
+          extraCropDataUrl: extraCropBuffer
+            ? `data:image/png;base64,${extraCropBuffer.toString('base64')}`
+            : null,
           tooth: data.tooth ?? '',
           diameter: data.diameter ?? '',
           length: data.length ?? ''

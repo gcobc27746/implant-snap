@@ -104,7 +104,7 @@ export class ConfigService {
   }
 
   private getCurrentScreenSize(): { width: number; height: number } {
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize
+    const { width, height } = screen.getPrimaryDisplay().bounds
     return { width, height }
   }
 

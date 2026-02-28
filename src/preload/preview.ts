@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 export type PreviewInitPayload = {
   imageDataUrl: string
+  toothCropDataUrl: string | null
+  extraCropDataUrl: string | null
   tooth: string
   diameter: string
   length: string

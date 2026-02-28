@@ -1,10 +1,14 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage } from 'electron'
+import { join } from 'node:path'
 
 export class AppLifecycleService {
   private tray: Tray | null = null
   private isQuitting = false
 
-  constructor(private readonly openAndFocusConfigWindow: () => void) {}
+  constructor(
+    private readonly openAndFocusConfigWindow: () => void,
+    private readonly onCapture: () => void
+  ) {}
 
   attachWindowCloseBehavior(window: BrowserWindow): void {
     app.on('before-quit', () => {
@@ -31,6 +35,13 @@ export class AppLifecycleService {
     this.tray.setContextMenu(
       Menu.buildFromTemplate([
         {
+          label: '截圖',
+          click: () => {
+            this.onCapture()
+          }
+        },
+        { type: 'separator' },
+        {
           label: '設定',
           click: () => {
             this.openAndFocusConfigWindow()
@@ -51,8 +62,9 @@ export class AppLifecycleService {
   }
 
   private createTrayIcon() {
-    return nativeImage.createFromDataURL(
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2W4xQAAAAASUVORK5CYII='
-    )
+    const iconPath = app.isPackaged
+      ? join(process.resourcesPath, 'icon.png')
+      : join(__dirname, '../../resources/icon.png')
+    return nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
   }
 }
