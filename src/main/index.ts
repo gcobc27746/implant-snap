@@ -14,6 +14,7 @@ import { AppError, ErrorCode, ERROR_MESSAGES } from './errors/AppError'
 import { TableAnalyzer } from './ocr/TableAnalyzer'
 import { validateCombination } from './ocr/types'
 import type { ParsedData } from './ocr/types'
+import { UpdaterService } from './updater/UpdaterService'
 
 // ── Service singletons ──────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ const cropService = new CropService()
 const ocrService = new OcrService({ debug: true })
 const tableAnalyzer = new TableAnalyzer()
 const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService, tableAnalyzer)
+const updaterService = new UpdaterService(() => mainWindow)
 const overlayService = new OverlayService()
 const previewService = new PreviewService()
 const outputService = new OutputService()
@@ -138,6 +140,8 @@ function registerIpcHandlers(): void {
   })
 
   // Open folder picker dialog for output directory
+  ipcMain.handle('updater:checkNow', () => updaterService.checkNow())
+
   ipcMain.handle('dialog:selectOutputDir', async () => {
     const result = await dialog.showOpenDialog({
       title: '選擇輸出資料夾',
@@ -344,28 +348,34 @@ function registerCaptureShortcut(): void {
 app.whenReady().then(() => {
   mainWindow = createMainWindow()
 
-  const lifecycleService = new AppLifecycleService(showAndFocusConfigWindow, () => {
-    const traceId = crypto.randomUUID().slice(0, 8)
-    runFullPipeline(traceId).catch((error) => {
-      const appErr = error instanceof AppError ? error : null
-      const code = appErr?.code ?? 'UNKNOWN'
-      const message = appErr
-        ? ERROR_MESSAGES[appErr.code] ?? appErr.message
-        : (error as Error).message
-      console.error(`[Pipeline][${traceId}][ERROR] ${code}: ${message}`, error)
-      notifyError(message)
-    })
-  })
+  const lifecycleService = new AppLifecycleService(
+    showAndFocusConfigWindow,
+    () => {
+      const traceId = crypto.randomUUID().slice(0, 8)
+      runFullPipeline(traceId).catch((error) => {
+        const appErr = error instanceof AppError ? error : null
+        const code = appErr?.code ?? 'UNKNOWN'
+        const message = appErr
+          ? ERROR_MESSAGES[appErr.code] ?? appErr.message
+          : (error as Error).message
+        console.error(`[Pipeline][${traceId}][ERROR] ${code}: ${message}`, error)
+        notifyError(message)
+      })
+    },
+    () => updaterService.checkNow().catch(console.error)
+  )
   lifecycleService.attachWindowCloseBehavior(mainWindow)
   lifecycleService.initializeTray()
 
   configService.load()
   registerIpcHandlers()
   registerCaptureShortcut()
+  updaterService.init()
 })
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  updaterService.destroy()
 })
 
 app.on('window-all-closed', () => {

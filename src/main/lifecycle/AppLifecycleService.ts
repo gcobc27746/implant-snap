@@ -7,7 +7,8 @@ export class AppLifecycleService {
 
   constructor(
     private readonly openAndFocusConfigWindow: () => void,
-    private readonly onCapture: () => void
+    private readonly onCapture: () => void,
+    private readonly onCheckUpdate: () => void = () => {}
   ) {}
 
   attachWindowCloseBehavior(window: BrowserWindow): void {
@@ -41,6 +42,12 @@ export class AppLifecycleService {
           }
         },
         { type: 'separator' },
+        {
+          label: '檢查更新',
+          click: () => {
+            this.onCheckUpdate()
+          }
+        },
         {
           label: '設定',
           click: () => {

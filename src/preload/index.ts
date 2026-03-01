@@ -15,6 +15,10 @@ const dialogApi = {
   selectOutputDir: (): Promise<string | null> => ipcRenderer.invoke('dialog:selectOutputDir')
 }
 
+const updaterApi = {
+  checkNow: (): Promise<void> => ipcRenderer.invoke('updater:checkNow')
+}
+
 const configApi = {
   load: (): Promise<AppConfig> => ipcRenderer.invoke('config:load'),
   save: (nextConfig: AppConfig): Promise<AppConfig> => ipcRenderer.invoke('config:save', nextConfig),
@@ -47,5 +51,6 @@ contextBridge.exposeInMainWorld('implantSnap', {
   config: configApi,
   capture: captureApi,
   pipeline: pipelineApi,
-  dialog: dialogApi
+  dialog: dialogApi,
+  updater: updaterApi
 })

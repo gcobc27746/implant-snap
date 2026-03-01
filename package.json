@@ -10,7 +10,8 @@
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "dist:win": "npm run build && electron-builder --win nsis"
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:publish": "npm run build && electron-builder --win --publish always"
   },
   "repository": {
     "type": "git",
@@ -34,7 +35,10 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "resources/icon.png", "to": "icon.png" }
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
+      }
     ],
     "win": {
       "icon": "resources/icon.png",
@@ -45,10 +49,16 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "gcobc27746",
+      "repo": "implant-snap"
     }
   },
   "dependencies": {
     "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.3",
     "konva": "^10.2.0",
     "screenshot-desktop": "^1.15.3",
     "sharp": "^0.34.5",
