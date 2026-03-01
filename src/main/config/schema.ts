@@ -51,6 +51,16 @@ export const CONFIG_SCHEMA: Schema<AppConfig> = {
         },
         required: ['x', 'y', 'width', 'height']
       },
+      cropTable: {
+        type: 'object',
+        properties: {
+          x: { type: 'number', minimum: 1 },
+          y: { type: 'number', minimum: 1 },
+          width: { type: 'number', minimum: 1 },
+          height: { type: 'number', minimum: 1 }
+        },
+        required: ['x', 'y', 'width', 'height']
+      },
       overlayAnchor: {
         type: 'object',
         properties: {
@@ -60,6 +70,6 @@ export const CONFIG_SCHEMA: Schema<AppConfig> = {
         required: ['x', 'y']
       }
     },
-    required: ['cropMain', 'ocrTooth', 'ocrExtra', 'overlayAnchor']
+    required: ['cropMain', 'ocrTooth', 'ocrExtra', 'cropTable', 'overlayAnchor']
   }
 }

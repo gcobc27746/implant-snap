@@ -22,6 +22,12 @@ export const REGION_META: Record<
     tagTextColor: '#0f172a',
     fill: 'rgba(34, 211, 238, 0.08)'
   },
+  cropTable: {
+    label: 'TABLE',
+    color: '#f59e0b',
+    tagTextColor: '#ffffff',
+    fill: 'rgba(245, 158, 11, 0.08)'
+  },
   overlayAnchor: {
     label: 'ANCHOR',
     color: '#137fec',
@@ -30,7 +36,7 @@ export const REGION_META: Record<
   }
 }
 
-export const RECT_KEYS: RectRegionKey[] = ['cropMain', 'ocrTooth', 'ocrExtra']
+export const RECT_KEYS: RectRegionKey[] = ['cropMain', 'ocrTooth', 'ocrExtra', 'cropTable']
 
 export const ANCHOR_RADIUS = 16
 export const MIN_LAYER_SCALE = 0.1

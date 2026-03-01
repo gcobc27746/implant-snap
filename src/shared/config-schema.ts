@@ -21,13 +21,14 @@ export type AppConfig = {
     cropMain: RegionRect
     ocrTooth: RegionRect
     ocrExtra: RegionRect
+    cropTable: RegionRect
     overlayAnchor: AnchorPoint
   }
 }
 
 export type RegionKey = keyof AppConfig['regions']
 
-export const RECT_REGION_KEYS = ['cropMain', 'ocrTooth', 'ocrExtra'] as const
+export const RECT_REGION_KEYS = ['cropMain', 'ocrTooth', 'ocrExtra', 'cropTable'] as const
 export type RectRegionKey = (typeof RECT_REGION_KEYS)[number]
 
 export const DEFAULT_REGION_RECT: RegionRect = { x: 1, y: 1, width: 100, height: 100 }
@@ -44,6 +45,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     cropMain: { x: 720, y: 90, width: 980, height: 920 },
     ocrTooth: { x: 1080, y: 120, width: 160, height: 90 },
     ocrExtra: { x: 1180, y: 700, width: 520, height: 360 },
+    cropTable: { x: 27, y: 588, width: 300, height: 432 },
     overlayAnchor: { x: 760, y: 120 }
   }
 }
@@ -51,5 +53,5 @@ export const DEFAULT_CONFIG: AppConfig = {
 export type ValidationResult = { valid: boolean; errors: string[] }
 
 export function isRectRegion(key: RegionKey): key is RectRegionKey {
-  return key !== 'overlayAnchor'
+  return (RECT_REGION_KEYS as readonly string[]).includes(key)
 }

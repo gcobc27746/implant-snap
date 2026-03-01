@@ -11,6 +11,8 @@ import { OverlayService } from './overlay/OverlayService'
 import { PreviewService } from './preview/PreviewService'
 import { OutputService } from './output/OutputService'
 import { AppError, ErrorCode, ERROR_MESSAGES } from './errors/AppError'
+import { TableAnalyzer } from './ocr/TableAnalyzer'
+import { validateCombination } from './ocr/types'
 import type { ParsedData } from './ocr/types'
 
 // ── Service singletons ──────────────────────────────────────────────────────
@@ -19,7 +21,8 @@ const configService = new ConfigService()
 const captureService = new CaptureService()
 const cropService = new CropService()
 const ocrService = new OcrService({ debug: true })
-const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService)
+const tableAnalyzer = new TableAnalyzer()
+const pipelineRunner = new CapturePipelineRunner(captureService, cropService, ocrService, tableAnalyzer)
 const overlayService = new OverlayService()
 const previewService = new PreviewService()
 const outputService = new OutputService()
@@ -176,10 +179,39 @@ async function runFullPipeline(traceId: string): Promise<void> {
   // 1. Capture + Crop + OCR
   // Hide the config window first so it doesn't appear in the screenshot.
   log(traceId, 'pipeline', '隱藏視窗 → 截圖 → 裁切 → OCR 流程')
-  const { fullScreen, crops, ocr } = await withWindowHidden(() =>
+  const { fullScreen, crops, ocr, table } = await withWindowHidden(() =>
     pipelineRunner.run(currentConfig, selectedDisplayId)
   )
   log(traceId, 'ocr', `tooth="${ocr.parsed.tooth ?? '?'}" d="${ocr.parsed.diameter ?? '?'}" l="${ocr.parsed.length ?? '?'}"`)
+
+  // Validate combination & auto-correct from table when OCR is wrong
+  const combValidation = validateCombination(ocr.parsed.diameter, ocr.parsed.length)
+  let resolvedData = ocr.parsed
+
+  if (!combValidation.valid) {
+    // Try to recover using table analysis (e.g. OCR misread "11.5" as "1.5")
+    if (
+      table.detected &&
+      table.confidence === 'high' &&
+      validateCombination(table.diameter, table.length).valid
+    ) {
+      resolvedData = { tooth: ocr.parsed.tooth, diameter: table.diameter, length: table.length }
+      log(traceId, 'validate', `OCR 組合無效(Ø${ocr.parsed.diameter ?? '?'}×${ocr.parsed.length ?? '?'}mm)，自動採用表格(Ø${table.diameter}×${table.length}mm)`)
+    } else {
+      log(traceId, 'validate', `無效組合: ${combValidation.message}`)
+      notifyWarning(combValidation.message ?? '植體組合無效')
+    }
+  } else if (table.detected && table.confidence === 'high') {
+    // Both OCR and table are valid: warn only when they genuinely disagree
+    const mismatch =
+      (table.diameter !== null && table.diameter !== ocr.parsed.diameter) ||
+      (table.length !== null && table.length !== ocr.parsed.length)
+    if (mismatch) {
+      const msg = `表格(Ø${table.diameter}×${table.length}mm)與OCR(Ø${ocr.parsed.diameter ?? '?'}×${ocr.parsed.length ?? '?'}mm)不符`
+      log(traceId, 'validate', msg)
+      notifyWarning(msg)
+    }
+  }
 
   // Propagate capture result to config window (for canvas preview)
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -198,7 +230,7 @@ async function runFullPipeline(traceId: string): Promise<void> {
       crops.cropMain.buffer,
       currentConfig.regions.overlayAnchor,
       currentConfig.regions.cropMain,
-      ocr.parsed
+      resolvedData
     )
     log(traceId, 'overlay', '疊加完成')
   } catch (e) {
@@ -208,14 +240,14 @@ async function runFullPipeline(traceId: string): Promise<void> {
   }
 
   // 3. Determine whether to show preview
-  let confirmedData: ParsedData = ocr.parsed
+  let confirmedData: ParsedData = resolvedData
   const reloadedConfig = configService.load()
 
   if (reloadedConfig.previewEnabled) {
     log(traceId, 'preview', 'opening preview window')
     const result = await previewService.showAndWait(
       overlayedBuffer,
-      ocr.parsed,
+      resolvedData,
       crops.ocrTooth.buffer,
       crops.ocrExtra.buffer
     )
@@ -233,11 +265,11 @@ async function runFullPipeline(traceId: string): Promise<void> {
       log(traceId, 'preview', 'previewEnabled set to false')
     }
 
-    // Re-render overlay if user modified data
+    // Re-render overlay if user modified data (compare against pre-confirmation best guess)
     const dataChanged =
-      confirmedData.tooth !== ocr.parsed.tooth ||
-      confirmedData.diameter !== ocr.parsed.diameter ||
-      confirmedData.length !== ocr.parsed.length
+      confirmedData.tooth !== resolvedData.tooth ||
+      confirmedData.diameter !== resolvedData.diameter ||
+      confirmedData.length !== resolvedData.length
 
     if (dataChanged) {
       try {

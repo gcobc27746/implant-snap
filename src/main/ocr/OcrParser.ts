@@ -43,17 +43,23 @@ function normalizeDiameter(raw: string): string {
 /**
  * Implant lengths: typically 4.0–18.0 mm
  * OCR commonly drops the decimal: "13.0" → "130"
- * OCR may also drop the leading digit: "13.0" → "30"
- *
- * Strategy: if the value looks like a valid diameter (< 4) but not a valid
- * length, it's likely a garbled length where digits were lost. We keep
- * the raw value and flag low confidence rather than returning a wrong number.
+ * OCR may also garble a leading "1" as lowercase "l", causing the regex to
+ * skip it and capture only the trailing digits: "11.5" → "1.5".
+ * Valid lengths are ≥ 4.0 mm, so any value < 4.0 is very likely a truncated
+ * two-digit length with the leading "1" missing.
  */
 function normalizeLength(raw: string): string {
   const v = parseFloat(raw)
-  // "130" → 13.0 (decimal dropped)
+  // "130" → 13.0 (decimal dropped, OCR missed the dot)
   if (v > 20) {
     return (v / 10).toFixed(1)
+  }
+  // "1.5" → try "11.5" (leading digit dropped by OCR: "l1.5")
+  if (v < 4.0) {
+    const candidate = parseFloat(`1${raw}`)
+    if (candidate >= 4.0 && candidate <= 20.0) {
+      return raw.includes('.') ? `1${raw}` : `${candidate}.0`
+    }
   }
   return raw.includes('.') ? raw : `${v}.0`
 }

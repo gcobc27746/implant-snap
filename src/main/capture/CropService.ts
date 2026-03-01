@@ -7,7 +7,8 @@ export class CropService {
     return {
       cropMain: await this.cropOne(source, regions.cropMain, 'cropMain'),
       ocrTooth: await this.cropOne(source, regions.ocrTooth, 'ocrTooth'),
-      ocrExtra: await this.cropOne(source, regions.ocrExtra, 'ocrExtra')
+      ocrExtra: await this.cropOne(source, regions.ocrExtra, 'ocrExtra'),
+      cropTable: await this.cropOne(source, regions.cropTable, 'cropTable')
     }
   }
 

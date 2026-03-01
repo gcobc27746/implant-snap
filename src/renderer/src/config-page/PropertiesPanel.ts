@@ -19,7 +19,7 @@ export class PropertiesPanel {
   private events!: PanelEvents
   private selectedKey: RegionKey | null = null
   private visibility: Record<RegionKey, boolean> = {
-    cropMain: true, ocrTooth: true, ocrExtra: true, overlayAnchor: true
+    cropMain: true, ocrTooth: true, ocrExtra: true, cropTable: true, overlayAnchor: true
   }
   private errorText = ''
   private displays: DisplayInfo[] = []

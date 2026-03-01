@@ -8,12 +8,14 @@ export type CropRegions = {
   cropMain: RegionRect
   ocrTooth: RegionRect
   ocrExtra: RegionRect
+  cropTable: RegionRect
 }
 
 export type CropResult = {
   cropMain: ImageBuffer
   ocrTooth: ImageBuffer
   ocrExtra: ImageBuffer
+  cropTable: ImageBuffer
 }
 
 export type DisplayInfo = {
