@@ -53,7 +53,8 @@
     "publish": {
       "provider": "github",
       "owner": "gcobc27746",
-      "repo": "implant-snap"
+      "repo": "implant-snap",
+      "releaseType": "release"
     }
   },
   "dependencies": {
