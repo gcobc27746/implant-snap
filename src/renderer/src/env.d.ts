@@ -31,6 +31,9 @@ type ImplantSnapApi = {
   dialog: {
     selectOutputDir: () => Promise<string | null>
   }
+  updater: {
+    checkNow: () => Promise<void>
+  }
 }
 
 declare global {
