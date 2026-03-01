@@ -1,7 +1,10 @@
 import { app, dialog } from 'electron'
+import { createRequire } from 'node:module'
 import type { BrowserWindow } from 'electron'
-import { autoUpdater } from 'electron-updater'
 import type { UpdateInfo } from 'electron-updater'
+
+// electron-updater is a CJS module; use createRequire for ESM-output main process
+const { autoUpdater } = createRequire(import.meta.url)('electron-updater') as typeof import('electron-updater')
 
 type ReleaseNoteInfo = { version: string; note: string | null }
 
