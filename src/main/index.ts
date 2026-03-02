@@ -190,6 +190,19 @@ async function runFullPipeline(traceId: string): Promise<void> {
   )
   log(traceId, 'ocr', `tooth="${ocr.parsed.tooth ?? '?'}" d="${ocr.parsed.diameter ?? '?'}" l="${ocr.parsed.length ?? '?'}"`)
 
+  // Physical-to-logical scale for overlay anchor coordinates.
+  // Config stores logical pixel coords; crop buffers are in physical pixels.
+  const physScaleX = fullScreen.size.width  / currentConfig.screenWidth
+  const physScaleY = fullScreen.size.height / currentConfig.screenHeight
+  const toPhysAnchor = (a: { x: number; y: number }) => ({
+    x: Math.round(a.x * physScaleX), y: Math.round(a.y * physScaleY)
+  })
+  const toPhysRect = (r: { x: number; y: number; width: number; height: number }) => ({
+    x: Math.round(r.x * physScaleX), y: Math.round(r.y * physScaleY),
+    width: Math.round(r.width * physScaleX), height: Math.round(r.height * physScaleY)
+  })
+
+
   // Validate combination & auto-correct from table when OCR is wrong
   const combValidation = validateCombination(ocr.parsed.diameter, ocr.parsed.length)
   let resolvedData = ocr.parsed
@@ -234,8 +247,8 @@ async function runFullPipeline(traceId: string): Promise<void> {
   try {
     overlayedBuffer = await overlayService.composite(
       crops.cropMain.buffer,
-      currentConfig.regions.overlayAnchor,
-      currentConfig.regions.cropMain,
+      toPhysAnchor(currentConfig.regions.overlayAnchor),
+      toPhysRect(currentConfig.regions.cropMain),
       resolvedData
     )
     log(traceId, 'overlay', '疊加完成')
@@ -258,8 +271,8 @@ async function runFullPipeline(traceId: string): Promise<void> {
       crops.ocrExtra.buffer,
       (data) => overlayService.composite(
         crops.cropMain.buffer,
-        reloadedConfig.regions.overlayAnchor,
-        reloadedConfig.regions.cropMain,
+        toPhysAnchor(reloadedConfig.regions.overlayAnchor),
+        toPhysRect(reloadedConfig.regions.cropMain),
         data
       )
     )
@@ -287,8 +300,8 @@ async function runFullPipeline(traceId: string): Promise<void> {
       try {
         overlayedBuffer = await overlayService.composite(
           crops.cropMain.buffer,
-          reloadedConfig.regions.overlayAnchor,
-          reloadedConfig.regions.cropMain,
+          toPhysAnchor(reloadedConfig.regions.overlayAnchor),
+          toPhysRect(reloadedConfig.regions.cropMain),
           confirmedData
         )
         log(traceId, 'overlay', '使用修改後資料重新疊加')

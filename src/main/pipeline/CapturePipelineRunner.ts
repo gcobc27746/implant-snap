@@ -30,11 +30,20 @@ export class CapturePipelineRunner {
     const fullScreen = await this.captureService.captureFullScreen(displayId)
     this.log(traceId, `截圖完成: ${fullScreen.size.width}x${fullScreen.size.height}`)
 
+    // On HiDPI displays screenshot-desktop returns physical pixels while
+    // config coordinates are stored in logical pixels (screen.getBounds()).
+    // Scale every region to physical pixel space before cropping.
+    const scaleX = fullScreen.size.width  / config.screenWidth
+    const scaleY = fullScreen.size.height / config.screenHeight
+    if (Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01) {
+      this.log(traceId, `HiDPI 縮放: scaleX=${scaleX.toFixed(3)} scaleY=${scaleY.toFixed(3)}`)
+    }
+
     const crops = await this.cropService.cropAll(fullScreen, {
-      cropMain: config.regions.cropMain,
-      ocrTooth: config.regions.ocrTooth,
-      ocrExtra: config.regions.ocrExtra,
-      cropTable: config.regions.cropTable
+      cropMain:  this.scaleRegion(config.regions.cropMain,  scaleX, scaleY),
+      ocrTooth:  this.scaleRegion(config.regions.ocrTooth,  scaleX, scaleY),
+      ocrExtra:  this.scaleRegion(config.regions.ocrExtra,  scaleX, scaleY),
+      cropTable: this.scaleRegion(config.regions.cropTable, scaleX, scaleY)
     })
     this.log(traceId, '裁切完成')
 
@@ -51,6 +60,19 @@ export class CapturePipelineRunner {
 
     this.log(traceId, `流程結束 (${Date.now() - t0}ms)`)
     return { traceId, fullScreen, crops, ocr, table }
+  }
+
+  private scaleRegion(
+    r: { x: number; y: number; width: number; height: number },
+    scaleX: number,
+    scaleY: number
+  ): { x: number; y: number; width: number; height: number } {
+    return {
+      x:      Math.round(r.x      * scaleX),
+      y:      Math.round(r.y      * scaleY),
+      width:  Math.round(r.width  * scaleX),
+      height: Math.round(r.height * scaleY)
+    }
   }
 
   private log(traceId: string, msg: string): void {
