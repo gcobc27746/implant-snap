@@ -1,6 +1,6 @@
 {
   "name": "implant-snap",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "> Snap. Extract. Overlay. Done.",
   "type": "module",
   "main": "out/main/index.js",
@@ -33,6 +33,11 @@
     "files": [
       "out/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/screenshot-desktop/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/tesseract.js/**/*"
     ],
     "extraResources": [
       {
