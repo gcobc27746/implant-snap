@@ -29,6 +29,12 @@ const previewApi = {
   },
   cancel: (): void => {
     ipcRenderer.send('preview:cancel')
+  },
+  rerender: (data: { tooth: string; diameter: string; length: string }): void => {
+    ipcRenderer.send('preview:rerender', data)
+  },
+  onRerenderResult: (callback: (imageDataUrl: string) => void): void => {
+    ipcRenderer.on('preview:rerenderResult', (_event, payload: { imageDataUrl: string }) => callback(payload.imageDataUrl))
   }
 }
 

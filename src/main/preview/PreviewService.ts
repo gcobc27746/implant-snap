@@ -15,7 +15,8 @@ export class PreviewService {
     imageBuffer: Buffer,
     data: ParsedData,
     toothCropBuffer?: Buffer,
-    extraCropBuffer?: Buffer
+    extraCropBuffer?: Buffer,
+    rerenderFn?: (data: ParsedData) => Promise<Buffer>
   ): Promise<PreviewResult> {
     return new Promise<PreviewResult>((resolve) => {
       const iconPath = app.isPackaged
@@ -79,14 +80,37 @@ export class PreviewService {
         settle({ confirmed: false })
       }
 
+      const rerenderHandler = (
+        event: Electron.IpcMainEvent,
+        payload: { tooth: string; diameter: string; length: string }
+      ): void => {
+        if (event.sender !== win.webContents) return
+        if (!rerenderFn) return
+        rerenderFn({
+          tooth: payload.tooth || null,
+          diameter: payload.diameter || null,
+          length: payload.length || null
+        })
+          .then((buf) => {
+            if (!win.isDestroyed()) {
+              win.webContents.send('preview:rerenderResult', {
+                imageDataUrl: `data:image/png;base64,${buf.toString('base64')}`
+              })
+            }
+          })
+          .catch(() => { /* silently ignore re-render errors */ })
+      }
+
       const cleanup = (): void => {
         ipcMain.off('preview:confirm', confirmHandler)
         ipcMain.off('preview:cancel', cancelHandler)
+        ipcMain.off('preview:rerender', rerenderHandler)
         if (!win.isDestroyed()) win.close()
       }
 
       ipcMain.on('preview:confirm', confirmHandler)
       ipcMain.on('preview:cancel', cancelHandler)
+      ipcMain.on('preview:rerender', rerenderHandler)
 
       win.once('closed', () => settle({ confirmed: false }))
 

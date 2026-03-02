@@ -128,7 +128,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle('pipeline:run', async (_event, displayId?: string) => {
     const id = displayId ?? selectedDisplayId
     const currentConfig = configService.load()
-    const { fullScreen, ocr } = await pipelineRunner.run(currentConfig, id)
+    const { fullScreen, ocr } = await withWindowHidden(() =>
+      pipelineRunner.run(currentConfig, id)
+    )
     return {
       capture: {
         dataUrl: bufferToDataUrl(fullScreen.buffer),
@@ -253,7 +255,13 @@ async function runFullPipeline(traceId: string): Promise<void> {
       overlayedBuffer,
       resolvedData,
       crops.ocrTooth.buffer,
-      crops.ocrExtra.buffer
+      crops.ocrExtra.buffer,
+      (data) => overlayService.composite(
+        crops.cropMain.buffer,
+        reloadedConfig.regions.overlayAnchor,
+        reloadedConfig.regions.cropMain,
+        data
+      )
     )
 
     if (!result.confirmed) {

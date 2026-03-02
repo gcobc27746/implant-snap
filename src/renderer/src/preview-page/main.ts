@@ -14,6 +14,8 @@ declare global {
       }) => void) => void
       confirm: (result: { tooth: string; diameter: string; length: string; skipPreview: boolean }) => void
       cancel: () => void
+      rerender: (data: { tooth: string; diameter: string; length: string }) => void
+      onRerenderResult: (cb: (imageDataUrl: string) => void) => void
     }
   }
 }
@@ -39,9 +41,26 @@ function mount(root: HTMLElement): void {
     overlayBadge.textContent = `${t} ( ${d} x ${l} )`
   }
 
-  toothInput.addEventListener('input', updateBadge)
-  diameterInput.addEventListener('input', updateBadge)
-  lengthInput.addEventListener('input', updateBadge)
+  let rerenderTimer: ReturnType<typeof setTimeout> | null = null
+
+  function scheduleRerender(): void {
+    if (rerenderTimer) clearTimeout(rerenderTimer)
+    rerenderTimer = setTimeout(() => {
+      window.previewApi.rerender({
+        tooth: toothInput.value.trim(),
+        diameter: diameterInput.value.trim(),
+        length: lengthInput.value.trim()
+      })
+    }, 300)
+  }
+
+  window.previewApi.onRerenderResult((imageDataUrl) => {
+    mainImg.src = imageDataUrl
+  })
+
+  toothInput.addEventListener('input', () => { updateBadge(); scheduleRerender() })
+  diameterInput.addEventListener('input', () => { updateBadge(); scheduleRerender() })
+  lengthInput.addEventListener('input', () => { updateBadge(); scheduleRerender() })
 
   saveBtn.addEventListener('click', () => {
     window.previewApi.confirm({

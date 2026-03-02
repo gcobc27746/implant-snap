@@ -3,6 +3,45 @@ import type { ParsedData } from './types'
 /** FDI tooth numbers: 11-18, 21-28, 31-38, 41-48 */
 const TOOTH_RE = /\b(1[1-8]|2[1-8]|3[1-8]|4[1-8])\b/
 
+/** All valid FDI tooth numbers as a lookup set */
+const VALID_TOOTH_NUMBERS = new Set([
+  '11','12','13','14','15','16','17','18',
+  '21','22','23','24','25','26','27','28',
+  '31','32','33','34','35','36','37','38',
+  '41','42','43','44','45','46','47','48'
+])
+
+/**
+ * Parse tooth number from OCR text.
+ * Tooth number always appears at the START of the text (e.g. "14 牙齿上的种植体").
+ * Three-layer strategy:
+ *  1. Direct regex match on raw text.
+ *  2. Normalize OCR confusables (l/I/|/! → 1, O/o → 0) then retry.
+ *  3. Strip whitespace from the leading portion and extract the first two digits.
+ * Result is validated against VALID_TOOTH_NUMBERS.
+ */
+function parseTooth(text: string): string | null {
+  // Layer 1: direct match
+  const m = TOOTH_RE.exec(text)
+  if (m && VALID_TOOTH_NUMBERS.has(m[1])) return m[1]
+
+  // Layer 2: normalize common OCR confusables and retry
+  const normalized = text
+    .replace(/[lIi|!]/g, '1')  // leading '1' often read as l, I, |, !
+    .replace(/[Oo]/g, '0')
+
+  const m2 = TOOTH_RE.exec(normalized)
+  if (m2 && VALID_TOOTH_NUMBERS.has(m2[1])) return m2[1]
+
+  // Layer 3: tooth number is always first — grab the first two digits from
+  // the leading section (handles OCR spaces between digits, e.g. "1 4 牙...")
+  const leading = normalized.trimStart().slice(0, 10).replace(/\s+/g, '')
+  const leadMatch = /^[^\d]*(\d{2})/.exec(leading)
+  if (leadMatch && VALID_TOOTH_NUMBERS.has(leadMatch[1])) return leadMatch[1]
+
+  return null
+}
+
 /**
  * Match "长度 = 13.0 mm" — tolerates OCR spaces in 长度
  * Also matches garbled variants like "长度", "长 度", "民 度", "代 度", "八 度"
@@ -69,8 +108,7 @@ export class OcrParser {
     const errors: string[] = []
 
     // --- Tooth number ---
-    const toothMatch = TOOTH_RE.exec(toothText)
-    const tooth = toothMatch ? toothMatch[1] : null
+    const tooth = parseTooth(toothText)
     if (!tooth) errors.push('tooth: 無法辨識牙位編號')
 
     // --- Length & Diameter ---
