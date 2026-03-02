@@ -1,6 +1,6 @@
 {
   "name": "implant-snap",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "> Snap. Extract. Overlay. Done.",
   "type": "module",
   "main": "out/main/index.js",

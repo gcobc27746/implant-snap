@@ -70,6 +70,6 @@ export const CONFIG_SCHEMA: Schema<AppConfig> = {
         required: ['x', 'y']
       }
     },
-    required: ['cropMain', 'ocrTooth', 'ocrExtra', 'cropTable', 'overlayAnchor']
+    required: ['cropMain', 'ocrTooth', 'ocrExtra', 'overlayAnchor']
   }
 }
