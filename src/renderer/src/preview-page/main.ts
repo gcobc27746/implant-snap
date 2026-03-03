@@ -257,13 +257,8 @@ function mount(root: HTMLElement): void {
     // ── Keydown inside inner ──────────────────────────────────────────────────
     el.querySelector('.note-inner')!.addEventListener('keydown', (e) => {
       const ke = e as KeyboardEvent
+      // Escape = stop edit; Enter = newline (browser default)
       if (ke.key === 'Escape') {
-        ke.preventDefault()
-        ke.stopPropagation()
-        stopEdit(note)
-      }
-      // Enter alone = stop edit; Shift+Enter = newline (browser default)
-      if (ke.key === 'Enter' && !ke.shiftKey) {
         ke.preventDefault()
         ke.stopPropagation()
         stopEdit(note)

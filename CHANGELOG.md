@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-03-03
+
+### Fixed
+- 備註框編輯模式中 Enter 鍵改為換行（原為結束編輯），Escape 鍵結束編輯
+
 ## [1.0.7] - 2026-03-03
 
 ### Added
@@ -35,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 自動更新（electron-updater，每小時背景偵測，GitHub Releases）
 - 設定畫面：拖曳定義各裁切區域、顯示選取之螢幕截圖
 
-[Unreleased]: https://github.com/gcobc27746/implant-snap/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/gcobc27746/implant-snap/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/gcobc27746/implant-snap/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/gcobc27746/implant-snap/compare/v1.0.0...v1.0.7
 [1.0.0]: https://github.com/gcobc27746/implant-snap/releases/tag/v1.0.0
