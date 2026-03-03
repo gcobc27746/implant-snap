@@ -2,8 +2,15 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
 import type { ParsedData } from '../ocr/types'
 
+export type NoteItem = {
+  text: string
+  relX: number
+  relY: number
+  fontSize: number
+}
+
 export type PreviewResult =
-  | { confirmed: true; data: ParsedData; skipPreview: boolean }
+  | { confirmed: true; data: ParsedData; notes: NoteItem[]; skipPreview: boolean }
   | { confirmed: false }
 
 export class PreviewService {
@@ -14,6 +21,7 @@ export class PreviewService {
   showAndWait(
     imageBuffer: Buffer,
     data: ParsedData,
+    notePresets: string[],
     toothCropBuffer?: Buffer,
     extraCropBuffer?: Buffer,
     rerenderFn?: (data: ParsedData) => Promise<Buffer>
@@ -25,9 +33,9 @@ export class PreviewService {
 
       const win = new BrowserWindow({
         width: 1100,
-        height: 760,
+        height: 800,
         minWidth: 700,
-        minHeight: 500,
+        minHeight: 550,
         title: 'Preview & Confirm — ImplantSnap',
         autoHideMenuBar: true,
         show: false,
@@ -61,7 +69,7 @@ export class PreviewService {
 
       const confirmHandler = (
         event: Electron.IpcMainEvent,
-        payload: { tooth: string; diameter: string; length: string; skipPreview: boolean }
+        payload: { tooth: string; diameter: string; length: string; notes: NoteItem[]; skipPreview: boolean }
       ): void => {
         if (event.sender !== win.webContents) return
         settle({
@@ -71,6 +79,7 @@ export class PreviewService {
             diameter: payload.diameter || null,
             length: payload.length || null
           },
+          notes: payload.notes ?? [],
           skipPreview: payload.skipPreview
         })
       }
@@ -130,7 +139,8 @@ export class PreviewService {
             : null,
           tooth: data.tooth ?? '',
           diameter: data.diameter ?? '',
-          length: data.length ?? ''
+          length: data.length ?? '',
+          notePresets: notePresets
         })
       }
       ipcMain.on('preview:ready', readyHandler)

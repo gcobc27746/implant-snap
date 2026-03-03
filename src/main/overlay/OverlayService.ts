@@ -39,6 +39,17 @@ function estimateTextWidth(text: string, fontSize: number): number {
   return Math.ceil(text.length * fontSize * 0.58 * 1.15)
 }
 
+/** Estimate width of a single line, handling CJK (≈full-width) vs ASCII. */
+function estimateLineWidth(text: string, fontSize: number): number {
+  let w = 0
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0
+    // CJK Unified Ideographs and other wide characters
+    w += code > 0x2E7F ? fontSize * 1.05 : fontSize * 0.58
+  }
+  return Math.ceil(w * 1.2) // 20% safety margin
+}
+
 function buildSvg(
   text: string,
   style: OverlayStyle
@@ -59,6 +70,44 @@ function buildSvg(
     font-weight="600"
     fill="${style.textColor}"
   >${escapeXml(text)}</text>
+</svg>`
+
+  return { svg, width, height }
+}
+
+function buildNoteSvg(
+  text: string,
+  fontSize: number,
+  textColor: string
+): { svg: string; width: number; height: number } {
+  const lines = text.split('\n')
+  const lineHeight = Math.round(fontSize * 1.5)
+  const maxLineW = Math.max(...lines.map(l => estimateLineWidth(l, fontSize)), 20)
+  const padding = 4
+  const strokeW = Math.max(2, Math.round(fontSize * 0.08))
+  const width = maxLineW + padding * 2
+  const height = lines.length * lineHeight + padding * 2
+  const firstY = padding + Math.round(fontSize * 0.82)
+
+  const tspans = lines
+    .map((line, i) =>
+      `<tspan x="${padding}" ${i === 0 ? `y="${firstY}"` : `dy="${lineHeight}"`}>${escapeXml(line)}</tspan>`
+    )
+    .join('\n    ')
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <text
+    font-family="Arial, Helvetica, Liberation Sans, sans-serif"
+    font-size="${fontSize}"
+    font-weight="600"
+    fill="${textColor}"
+    stroke="#000000"
+    stroke-width="${strokeW}"
+    paint-order="stroke"
+  >
+    ${tspans}
+  </text>
 </svg>`
 
   return { svg, width, height }
@@ -109,6 +158,43 @@ export class OverlayService {
         top: clampedY,
         left: clampedX
       }])
+      .png()
+      .toBuffer()
+  }
+
+  /**
+   * Composite a multi-line note text onto a buffer at the given fractional position.
+   * The note is rendered with a semi-transparent dark background box.
+   *
+   * @param buffer   - Source PNG buffer
+   * @param noteText - Note text (may contain \n for line breaks)
+   * @param relX     - Fractional x position within the image (0–1)
+   * @param relY     - Fractional y position within the image (0–1)
+   * @returns Composited PNG buffer, or original buffer if noteText is empty
+   */
+  async compositeNote(
+    buffer: Buffer,
+    noteText: string,
+    relX: number,
+    relY: number,
+    fontSize = 36
+  ): Promise<Buffer> {
+    const trimmed = noteText.trim()
+    if (!trimmed) return buffer
+
+    const { svg, width, height } = buildNoteSvg(trimmed, Math.max(10, fontSize), '#ffffff')
+
+    const meta = await sharp(buffer).metadata()
+    const imgW = meta.width ?? 100
+    const imgH = meta.height ?? 100
+
+    const pixX = Math.round(relX * imgW)
+    const pixY = Math.round(relY * imgH)
+    const clampedX = Math.min(pixX, Math.max(0, imgW - width))
+    const clampedY = Math.min(pixY, Math.max(0, imgH - height))
+
+    return await sharp(buffer)
+      .composite([{ input: Buffer.from(svg), top: clampedY, left: clampedX }])
       .png()
       .toBuffer()
   }

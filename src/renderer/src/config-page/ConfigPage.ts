@@ -182,7 +182,53 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
     outputDirInput.value = cfg.outputDir ?? ''
     sidecarToggle.checked = cfg.sidecarEnabled ?? false
     previewToggle.checked = cfg.previewEnabled ?? true
+
+    renderNotePresets(cfg.notePresets ?? [])
   }
+
+  // ── Note presets editor ──────────────────────────────────────────────────
+  function renderNotePresets(presets: string[]): void {
+    const listEl = root.querySelector<HTMLElement>('#notePresetsList')!
+    listEl.innerHTML = ''
+    presets.forEach((text, idx) => {
+      const row = document.createElement('div')
+      row.className = 'flex gap-2 items-start'
+      row.dataset.idx = String(idx)
+
+      const ta = document.createElement('textarea')
+      ta.rows = 2
+      ta.value = text
+      ta.placeholder = '輸入預設備註文字（支援換行）'
+      ta.className = 'flex-1 bg-slate-50 dark:bg-[#1c2631] border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#a855f7] focus:border-[#a855f7] text-slate-900 dark:text-white outline-none transition-all resize-none font-sans'
+      ta.dataset.idx = String(idx)
+
+      const delBtn = document.createElement('button')
+      delBtn.type = 'button'
+      delBtn.title = '刪除'
+      delBtn.className = 'shrink-0 mt-1 p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors'
+      delBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">delete</span>'
+      delBtn.addEventListener('click', () => {
+        const currentPresets = collectNotePresets()
+        currentPresets.splice(idx, 1)
+        renderNotePresets(currentPresets)
+      })
+
+      row.appendChild(ta)
+      row.appendChild(delBtn)
+      listEl.appendChild(row)
+    })
+  }
+
+  function collectNotePresets(): string[] {
+    const listEl = root.querySelector<HTMLElement>('#notePresetsList')!
+    return Array.from(listEl.querySelectorAll<HTMLTextAreaElement>('textarea'))
+      .map(ta => ta.value)
+  }
+
+  root.querySelector('#btnAddNotePreset')?.addEventListener('click', () => {
+    const current = collectNotePresets()
+    renderNotePresets([...current, ''])
+  })
 
   root.querySelector('#btnBrowseOutputDir')?.addEventListener('click', async () => {
     const selected = await window.implantSnap.dialog.selectOutputDir()
@@ -217,7 +263,8 @@ export async function mountConfigPage(root: HTMLElement): Promise<void> {
         ...config,
         outputDir: outputDirInput.value.trim(),
         sidecarEnabled: sidecarToggle.checked,
-        previewEnabled: previewToggle.checked
+        previewEnabled: previewToggle.checked,
+        notePresets: collectNotePresets().filter(p => p.trim() !== '')
       }
       config = await window.implantSnap.config.save(updated)
       settingsMsg.textContent = '✓ 設定已儲存'
@@ -345,6 +392,23 @@ function buildLayout(): string {
               <p class="text-xs text-slate-500 mt-0.5">在圖片旁同時儲存一份包含解析資料的 .json 檔。</p>
             </div>
           </label>
+        </section>
+
+        <div class="h-px bg-slate-200 dark:bg-slate-800"></div>
+
+        <!-- Note presets -->
+        <section class="space-y-3">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-base" style="color:#a855f7">edit_note</span>
+            備註預設訊息
+          </h3>
+          <p class="text-xs text-slate-500">截圖預覽時可從下拉選單快速套用。支援換行（按 Enter）。</p>
+          <div id="notePresetsList" class="space-y-2"></div>
+          <button id="btnAddNotePreset" type="button"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:border-[#a855f7] hover:text-[#a855f7] transition-colors">
+            <span class="material-symbols-outlined text-[14px]">add</span>
+            新增預設訊息
+          </button>
         </section>
 
         <div class="flex items-center gap-4">

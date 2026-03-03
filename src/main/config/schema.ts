@@ -18,6 +18,11 @@ export const CONFIG_SCHEMA: Schema<AppConfig> = {
   requiresRegionRedefinition: { type: 'boolean', default: false },
   outputDir: { type: 'string', default: '' },
   sidecarEnabled: { type: 'boolean', default: false },
+  notePresets: {
+    type: 'array',
+    items: { type: 'string' },
+    default: []
+  },
   regions: {
     type: 'object',
     properties: {
@@ -68,7 +73,7 @@ export const CONFIG_SCHEMA: Schema<AppConfig> = {
           y: { type: 'number', minimum: 1 }
         },
         required: ['x', 'y']
-      }
+      },
     },
     required: ['cropMain', 'ocrTooth', 'ocrExtra', 'overlayAnchor']
   }

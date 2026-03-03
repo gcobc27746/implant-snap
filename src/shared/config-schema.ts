@@ -10,6 +10,12 @@ export type AnchorPoint = {
   y: number
 }
 
+export const DEFAULT_NOTE_PRESETS: string[] = [
+  '骨量不足 需補骨\n需做上顎竇增高術',
+  '拔牙後 頰側需補骨',
+  '因平行需求\n顎側植體稍微露出 需補骨'
+]
+
 export type AppConfig = {
   screenWidth: number
   screenHeight: number
@@ -17,6 +23,7 @@ export type AppConfig = {
   requiresRegionRedefinition: boolean
   outputDir: string
   sidecarEnabled: boolean
+  notePresets: string[]
   regions: {
     cropMain: RegionRect
     ocrTooth: RegionRect
@@ -41,6 +48,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   requiresRegionRedefinition: false,
   outputDir: '',
   sidecarEnabled: false,
+  notePresets: DEFAULT_NOTE_PRESETS,
   regions: {
     cropMain: { x: 720, y: 90, width: 980, height: 920 },
     ocrTooth: { x: 1080, y: 120, width: 160, height: 90 },

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-03-03
+
+### Added
+- 預覽視窗支援多備註框：下拉選單選取預設備註（含 `[空白]`）後按「新增」加入圖上備註框
+- 備註框支援拖曳移動、拖曳 8 方向角點縮放字體大小
+- 雙擊備註框進入內嵌編輯模式（Enter 或 Escape 結束），右上角圓形 × 按鈕可刪除
+- 選取狀態才顯示邊框、8 個編輯點與 × 按鈕；未選取時僅顯示文字
+- 備註輸出無背景底色，採文字描邊（stroke）保持可讀性
+- 設定頁可新增 / 編輯 / 刪除備註預設文字
+
+### Fixed
+- 快速連按 `Ctrl+Shift+S` 不再重複觸發截圖流程（新增 pipeline 執行鎖，同時保護系統匣截圖入口）
+
 ## [1.0.0] - 2026-03-01
 
 ### Added
@@ -22,5 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 自動更新（electron-updater，每小時背景偵測，GitHub Releases）
 - 設定畫面：拖曳定義各裁切區域、顯示選取之螢幕截圖
 
-[Unreleased]: https://github.com/gcobc27746/implant-snap/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/gcobc27746/implant-snap/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/gcobc27746/implant-snap/compare/v1.0.0...v1.0.7
 [1.0.0]: https://github.com/gcobc27746/implant-snap/releases/tag/v1.0.0

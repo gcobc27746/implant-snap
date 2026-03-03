@@ -63,6 +63,7 @@ function log(traceId: string, step: string, msg: string): void {
 
 let mainWindow: BrowserWindow | null = null
 let selectedDisplayId: string | undefined
+let pipelineRunning = false
 
 function createMainWindow(): BrowserWindow {
   const iconPath = app.isPackaged
@@ -267,15 +268,17 @@ async function runFullPipeline(traceId: string): Promise<void> {
     const result = await previewService.showAndWait(
       overlayedBuffer,
       resolvedData,
+      reloadedConfig.notePresets ?? [],
       crops.ocrTooth.buffer,
       crops.ocrExtra.buffer,
-      (data) => overlayService.composite(
+      async (data) => overlayService.composite(
         crops.cropMain.buffer,
         toPhysAnchor(reloadedConfig.regions.overlayAnchor),
         toPhysRect(reloadedConfig.regions.cropMain),
         data
       )
     )
+
 
     if (!result.confirmed) {
       log(traceId, 'preview', 'user cancelled — aborting')
@@ -309,6 +312,23 @@ async function runFullPipeline(traceId: string): Promise<void> {
         // keep previous overlayedBuffer
       }
     }
+
+    // Apply each note overlay at user-specified position and font size
+    for (const noteItem of result.notes) {
+      if (!noteItem.text.trim()) continue
+      try {
+        overlayedBuffer = await overlayService.compositeNote(
+          overlayedBuffer,
+          noteItem.text,
+          noteItem.relX,
+          noteItem.relY,
+          noteItem.fontSize
+        )
+        log(traceId, 'overlay', `備註疊加完成 relX=${noteItem.relX.toFixed(2)} relY=${noteItem.relY.toFixed(2)} fontSize=${noteItem.fontSize}`)
+      } catch (e) {
+        log(traceId, 'overlay', `備註疊加失敗: ${(e as Error).message}`)
+      }
+    }
   }
 
   // 4. Error policy: handle incomplete parse
@@ -339,25 +359,35 @@ async function runFullPipeline(traceId: string): Promise<void> {
   notifySuccess(`已儲存：${filePath}`)
 }
 
-// ── Global shortcut ──────────────────────────────────────────────────────────
+// ── Pipeline guard (prevents concurrent runs) ─────────────────────────────────
 
-function registerCaptureShortcut(): void {
-  const shortcut = 'CommandOrControl+Shift+S'
-  const registered = globalShortcut.register(shortcut, async () => {
-    const traceId = crypto.randomUUID().slice(0, 8)
-    try {
-      await runFullPipeline(traceId)
-    } catch (error) {
+function runPipelineGuarded(): void {
+  if (pipelineRunning) {
+    console.log('[Pipeline] 已在執行中，忽略重複觸發')
+    return
+  }
+  pipelineRunning = true
+  const traceId = crypto.randomUUID().slice(0, 8)
+  runFullPipeline(traceId)
+    .catch((error) => {
       const appErr = error instanceof AppError ? error : null
       const code = appErr?.code ?? 'UNKNOWN'
       const message = appErr
         ? ERROR_MESSAGES[appErr.code] ?? appErr.message
         : (error as Error).message
-
       console.error(`[Pipeline][${traceId}][ERROR] ${code}: ${message}`, error)
       notifyError(message)
-    }
-  })
+    })
+    .finally(() => {
+      pipelineRunning = false
+    })
+}
+
+// ── Global shortcut ──────────────────────────────────────────────────────────
+
+function registerCaptureShortcut(): void {
+  const shortcut = 'CommandOrControl+Shift+S'
+  const registered = globalShortcut.register(shortcut, () => runPipelineGuarded())
 
   if (!registered) {
     console.error(`[Pipeline] 無法註冊全域快捷鍵: ${shortcut}`)
@@ -371,18 +401,7 @@ app.whenReady().then(() => {
 
   const lifecycleService = new AppLifecycleService(
     showAndFocusConfigWindow,
-    () => {
-      const traceId = crypto.randomUUID().slice(0, 8)
-      runFullPipeline(traceId).catch((error) => {
-        const appErr = error instanceof AppError ? error : null
-        const code = appErr?.code ?? 'UNKNOWN'
-        const message = appErr
-          ? ERROR_MESSAGES[appErr.code] ?? appErr.message
-          : (error as Error).message
-        console.error(`[Pipeline][${traceId}][ERROR] ${code}: ${message}`, error)
-        notifyError(message)
-      })
-    },
+    () => runPipelineGuarded(),
     () => updaterService.checkNow().catch(console.error)
   )
   lifecycleService.attachWindowCloseBehavior(mainWindow)

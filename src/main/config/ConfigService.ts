@@ -96,6 +96,10 @@ export class ConfigService {
     return {
       ...DEFAULT_CONFIG,
       ...partialConfig,
+      // If old config has no notePresets (or empty), fall back to defaults
+      notePresets: (partialConfig.notePresets && partialConfig.notePresets.length > 0)
+        ? partialConfig.notePresets
+        : DEFAULT_CONFIG.notePresets,
       regions: {
         ...DEFAULT_CONFIG.regions,
         ...partialConfig.regions

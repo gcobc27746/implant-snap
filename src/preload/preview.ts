@@ -7,17 +7,28 @@ export type PreviewInitPayload = {
   tooth: string
   diameter: string
   length: string
+  notePresets: string[]
+}
+
+export type NoteConfirmItem = {
+  text: string
+  /** Fractional x position within the crop image (0–1). */
+  relX: number
+  /** Fractional y position within the crop image (0–1). */
+  relY: number
+  /** Font size in image buffer pixels. */
+  fontSize: number
 }
 
 export type PreviewConfirmPayload = {
   tooth: string
   diameter: string
   length: string
+  notes: NoteConfirmItem[]
   skipPreview: boolean
 }
 
 const previewApi = {
-  /** Called by the renderer after it has registered the onInit callback. */
   signalReady: (): void => {
     ipcRenderer.send('preview:ready')
   },
