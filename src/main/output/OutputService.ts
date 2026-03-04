@@ -71,7 +71,7 @@ export class OutputService {
     return { filePath, sidecarPath }
   }
 
-  private generateFilename(data: ParsedData): string {
+  private generateFilename(_data: ParsedData): string {
     const now = new Date()
     const YYYY = now.getFullYear()
     const MM = String(now.getMonth() + 1).padStart(2, '0')
@@ -79,13 +79,8 @@ export class OutputService {
     const HH = String(now.getHours()).padStart(2, '0')
     const mm = String(now.getMinutes()).padStart(2, '0')
     const ss = String(now.getSeconds()).padStart(2, '0')
-    const ts = `${YYYY}${MM}${DD}_${HH}${mm}${ss}`
 
-    const tooth = data.tooth ?? 'unknown'
-    const diameter = data.diameter ?? '?'
-    const length = data.length ?? '?'
-
-    return `${ts}_tooth${tooth}_${diameter}x${length}.png`
+    return `螢幕擷取畫面 ${YYYY}-${MM}-${DD} ${HH}${mm}${ss}.png`
   }
 
   private async getUniqueFilename(dir: string, filename: string): Promise<string> {

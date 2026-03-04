@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-03-04
+
+### Changed
+- 輸出檔名格式改為 `螢幕擷取畫面 YYYY-MM-DD HHmmss.png`
+
 ## [1.0.8] - 2026-03-03
 
 ### Fixed
@@ -40,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 自動更新（electron-updater，每小時背景偵測，GitHub Releases）
 - 設定畫面：拖曳定義各裁切區域、顯示選取之螢幕截圖
 
-[Unreleased]: https://github.com/gcobc27746/implant-snap/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/gcobc27746/implant-snap/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/gcobc27746/implant-snap/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/gcobc27746/implant-snap/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/gcobc27746/implant-snap/compare/v1.0.0...v1.0.7
 [1.0.0]: https://github.com/gcobc27746/implant-snap/releases/tag/v1.0.0
